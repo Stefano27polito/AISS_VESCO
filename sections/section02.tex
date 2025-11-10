@@ -1,6 +1,99 @@
-% Example of figure
-\section{Section 2}
-\begin{figure}[H]
-  \includegraphics[page = 1,trim = 2cm 16.5cm 2cm 5cm, clip, width = 0.9\textwidth]{\slides}
-  \caption{Example of description}
+\section {Self-Sovereign Identity (SSI)}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/section_2/ssi.png}
+  \caption{Self-Sovereign Identity (SSI): data controlled by the user.}
+  \label{fig:ssi}
 \end{figure}
+
+\noindent
+This model is completely new and emerging starts from the traditional peer to peer approach. Here we don't talk about organization, username, password, but we are interested in establishing interaction between a peer (person, organization ecc) and another peer.\\
+With this model, we are able, to interact, in trusted way with anyone else exploit a cryptographic function and personal wallet (that each peer should have).
+
+\vspace{1.35 cm}
+
+\noindent
+The core of this concept is the \textbf{decentralization} of identity management, which eliminates the need for intermediaries such as governments or corporations. Instead, individuals can create and manage their digital identities using cryptographic keys stored in personal wallets. That is impossible in other architectures as PKI.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.43\textwidth]{images/section_2/pki.png}
+  \caption{PKI infrastructure: data controlled by a central authority.}
+  \label{fig:pki}
+\end{figure}
+
+\newpage
+
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/section_2/ssi_layers.png}
+  \caption{SSI framework: layered architecture for decentralized identity management.}
+  \label{fig:ssi_layers}
+\end{figure}
+
+\noindent
+The SSI framework looks like a stratified architecture. It is divided by a different layers and each layer perform a specific task.
+\begin{itemize}
+  \item \textbf{Layer 1: Verifiable Data Registry (VDR)}:It is the foundamental of SSI infrastructure. It is responsible for storing verifiable data, such as public keys, and can be implemented through diverse technologies, including centralized databases or Distributed Ledger Technologies (DLTs) like blockchains or Directed Acyclic Graphs (DAGs) such as IOTA’s Tangle.\\
+  Importantoly, the SSI framework is designed to be VDR-independent, allowing entities to adopt or develop their own infrastructure without being constrained by a specific implementation.
+  
+  \item \textbf{Layer 2: Decentralized Identifiers (DIDs)}: A DID can be conceptualized as a Uniform Resource Identifier (URI) that points to a 
+  \textit{DID document} containing the public key of a peer stored on the chosen VDR.\\
+  When initiating communication, an entity shares its DID, which provides the location of its public key. 
+  A standard challenge–response protocol is then employed to verify ownership of the corresponding private key.
+  
+  \item \textbf{Layer 3: Verifiable Credentials (VCs)}: The framework introduces the concept of \textit{Verifiable Credentials (VCs)}, which constitute the final component required to build a complete Self-Sovereign Identity (SSI).\\ 
+  An individual’s digital identity is therefore composed of three essential elements: 
+  \textit{(i)} a cryptographic key pair (public and private keys), 
+  \textit{(ii)} a Decentralized Identifier (DID), and 
+  \textit{(iii)} at least one verifiable credential. 
+  Without the coexistence of these three elements, an entity cannot be considered to possess a functional SSI.
+
+  \item \textbf{Layer 4: Application Ecosystem}: At this level, any subject—whether an individual, organization, or information system—can employ its fully formed self-sovereign identity to engage in verifiable and secure exchanges with others.\\
+  These interactions rely on the mutual validation of verifiable credentials and the underlying cryptographic proofs established in the lower layers.\\
+  Thus, Layer 4 operationalizes trust: it allows decentralized entities to communicate, authenticate, and transact autonomously within the SSI ecosystem.\\
+\end{itemize}
+
+\subsection{VDRs}
+
+The VDR is essentially a system that stores and manages (allows also revocation of) public keys.\\ 
+All these information, inside VDR, are used to verify the authenticity and the status of verifiable credentials and DIDs.\\
+\\
+
+\noindent
+It can be implemented with various technology.\\
+Distributed Ledger Technologies (DLTs) such as blockchains or Tangles are widely considered the most suitable basis for Verifiable Data Registries (VDRs), as they ensure \textit{immutability} and \textit{persistence} 
+of information, preventing unauthorized modifications.
+
+\subsection{Decentralized Identifier (DID)}
+It is a core of \textbf{layer 2} and is essentially the URI that let you inform someone else of where to access your public key.\\
+The controller of the DID is the entity that can store, change, update, the public key on the VDR. Typically, the subject and the controller are the same entity.\\
+
+\noindent
+Uniform Resource Identifier (URI) is composed by three distinct components:
+
+\begin{enumerate}
+    \item DID URI scheme identifier,
+    \item DID method identifier,
+    \item DID method-specific identifier.
+\end{enumerate}
+
+\medskip
+\begin{center}
+\texttt{did:method\_name:method\_specific\_id}
+\end{center}
+
+\medskip
+
+\noindent
+This string represents the structure of a DID.\\ 
+It begins with the URI scheme identifier \texttt{did}, followed by  the method name, which denotes the specific method used to interact with the chosen Verifiable Data Registry (VDR).\\ 
+Finally, the method-specific identifier corresponds to the unique address within that VDR where the public key and associated metadata can be retrieved.
+
+\medskip
+
+\noindent
+For example, if a blockchain such as Bitcoin is used as the registry, the DID would take the form \texttt{did:btc:<identifier>}. \\
+
+
