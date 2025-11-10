@@ -1,6 +1,28 @@
-% Example of figure
-\section{Section 1}
-\begin{figure}[H]
-  \includegraphics[page = 1,trim = 2cm 16.5cm 2cm 5cm, clip, width = 0.9\textwidth]{\slides}
-  \caption{Example of description}
+\section {Identity Systems}
+
+In the last few years, Self-Sovereign Identity (SSI) has emerged as a transformative approach to digital identity management.\\ SSI empowers individuals to own, control, and share their digital identities \textbf{without relying on a central authority}.\\ This paradigm shift is driven by advancements in blockchain technology, cryptography, and decentralized networks.\\
+\\
+
+\noindent
+Before understanding SSI in details, it is essential go back to the traditional identity management systems. In conventional systems, identities are typically managed by centralized entities such as governments, corporations, or social media platforms.\\ These entities issue and control digital identities, which can lead to issues such as data breaches, identity theft, and lack of user control over personal information.
+
+\paragraph{Siloed (Centralized) Identity:} It is the oldest one model. It is a essential model based on USERNAME + PASSWORD: each service provider creates and manages its own identity system.\\ Users have separate identities for each service they use, leading to fragmentation and inconvenience.\\ In this model, users must remember multiple usernames and passwords.\\
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/section_1/siloed.png}
+  \caption{Siloed (centralized) identity: data controlled by a single authority.}
+  \label{fig:siloed}
 \end{figure}
+
+
+\paragraph{Third-Party IDP (Federated) Identity:} 
+It is the most used model nowadays. It is based on the concept of Identity Providers (IDPs) that manage user identities on behalf of multiple service providers.\\ Users can log in to various services using a single set of credentials provided by the IDP (e.g.,Apple, Google, Facebook).\\ This model improves user convenience and reduces password use but still relies on centralized authorities.\\
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/section_1/third_party_idp.png}
+  \caption{Third-Party IDP (Federated) identity: data controlled by multiple authorities.}
+  \label{fig:third_party_idp}
+\end{figure}
+
+\noindent
+Both the Siloed and Third-Party IDP models have significant drawbacks, including lack of user control, privacy concerns, and vulnerability to data breaches.\\ SSI addresses these issues by providing a decentralized approach to identity management.\\
