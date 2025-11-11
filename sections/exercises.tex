@@ -141,3 +141,67 @@ This structure promotes clarity and reuse of key definitions.
 \textbf{Comment:}  
 The document advertises a messaging service while defining a single verification method for authentication.  
 Multiple services can be published as an array under the \texttt{service} property if needed.
+
+\noindent
+The follwing Exercise are related to DID Resolution Methods
+
+\subsection{Exercise 5: DID Resolution with Multiple Verification Methods}
+\textbf{Goal:} 
+Create a DID Document with two verification methods identified by the fragments \texttt{\#key-1} and \texttt{\#key-2}.  
+Then, perform a resolution process to retrieve both verification methods individually.
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:example:123abc",
+  "verificationMethod": [
+    {
+      "id": "did:example:123abc#key-1",
+      "type": "Multikey",
+      "controller": "did:example:123abc",
+      "publicKeyMultibase": "… encoded public key …"
+    },
+    {
+      "id": "did:example:123abc#key-2",
+      "type": "Multikey",
+      "controller": "did:example:123abc",
+      "publicKeyMultibase": "… encoded public key …"
+    }
+  ]
+}
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+This DID Document defines two distinct verification methods, each identified by a fragment reference.  
+Both methods are controlled by the same DID subject and encoded using the \texttt{Multikey} format.  
+This structure allows peers to request or verify either key independently through the DID Resolution function.
+
+\subsection{Exercise 6: Resolving DID Fragments}
+\textbf{Goal:} 
+Using the DID Document defined above, resolve the following DIDs:
+
+\begin{enumerate}
+  \item \texttt{did:example:123abc}
+  \item \texttt{did:example:123abc\#key-1}
+  \item \texttt{did:example:123abc\#key-2}
+\end{enumerate}
+
+\noindent
+\textbf{Resolution Request Example:}
+\begin{verbatim}
+"verificationMethod": [
+  {
+    "id": "did:example:123abc#key-1",
+    "type": "Multikey",
+    "controller": "did:example:123abc",
+    "publicKeyMultibase": "… encoded public key …"
+  }
+]
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+When resolving the DID without specifying a fragment (\texttt{did:example:123abc}),  
+the resolver returns the entire DID Document, including all verification methods.  
+When resolving with a fragment (e.g., \texttt{\#key-1}), only the referenced key information is retrieved.  

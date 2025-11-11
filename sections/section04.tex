@@ -352,3 +352,237 @@ The \texttt{didResolutionMetadata} field contains information about the outcome 
 \end{tabularx}
 \caption{Metadata returned by the DID Resolution process.}
 \end{table}
+\vspace{3 cm}  
+
+%%%%%inzion II lesson%%%%%
+\subsubsection{Presentation Mode}
+
+The schema of presentation, are based on the interaction between the DID Document, its controller and its subject.  
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/section_4/presentation_mode.png}
+  \caption{DID Document presentation modes.}
+  \label{fig:did_presentation_mode}
+\end{figure}
+
+\vspace{3 cm}
+\noindent
+In general, each DID Document is associated with a \textbf{DID Controller}.\\
+The controller is the entity authorized to \textit{create}, \textit{update}, and \textit{manage} the DID Document.\\  
+Typically, the controller coincides with the DID Subject, but this is not always the case.\\  
+In some implementations, external entities may also hold partial or full control over a DID Document.
+
+\begin{figure}[h!]
+  \FloatBarrier
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/section_4/single_controller.png}
+  \caption{DID Controller relationship with DID Document and DID Subject.}
+  \label{fig:did_controller}
+\end{figure}
+
+\vspace{3 cm}
+
+\noindent
+In more complex scenarios, a DID Document may be managed by \textbf{multiple independent controllers}.\\  
+Each controller can interact with others to coordinate updates, modifications, or deletions of the DID Document.
+\medskip
+
+\noindent
+Several coordination mechanisms are possible:
+\begin{itemize}
+    \item \textbf{Priority-based control:} a hierarchical model where higher-priority controllers can override updates from lower-priority ones.
+    \item \textbf{Consensus-based control:} all controllers must reach agreement before any modification to the DID Document is accepted.
+    \item \textbf{Custom coordination logic:} any additional governance rules defined by the implementing organization.
+\end{itemize}
+\bigskip
+
+\subsubsection *{Controller Groups}
+An alternative model is the use of a \textbf{Controller Group}, in which several entities act collectively as a single controlling authority.\\  
+This group-based governance requires additional mechanisms for managing coordination, authorization, and consensus.\\  
+Such rules are implementation-specific and remain outside the formal scope of the W3C DID specification.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/section_4/group_controller.png}
+  \caption{Multiple DID Controllers managing a single DID Document.}
+  \label{fig:did_multiple_controllers}
+\end{figure}
+
+\subsection{Security Considerations}
+
+When specifying or implementing a DID Method, developers must evaluate not only the core DID operations but also the surrounding ecosystem that supports trust and integrity in the system.\\ 
+The following points summarize the key security aspects recommended by the W3C:
+
+\paragraph{1. Choosing the DID Resolver}
+Given the absence of a central authority, multiple DID Methods and resolver implementations exist in the ecosystem.\\ 
+Selecting a correct and reliable resolver implementation is essential to guarantee \textbf{interoperability}.\\  
+Different methods may have incompatible specifications, and adopting an incorrect resolver can lead to failure in DID resolution or verification.
+
+\paragraph{2. Non-Repudiation}
+Non-repudiation of DIDs and DID Document updates is supported only when:
+\begin{enumerate}
+    \item the underlying VDR provides a \textbf{verifiable timestamp};
+    \item the subject actively monitors for \textbf{unauthorized updates};
+    \item the subject has the capability to \textbf{revert malicious modifications}.
+\end{enumerate}
+If any of these conditions are missing, non-repudiation cannot be guaranteed by the implementation.
+
+\paragraph{3. Notification of Updates}
+Some VDRs or DLTs support event-based notification mechanisms that allow subscribers to detect changes in DID Documents.\\
+In other cases, additional overlay services are required to monitor updates.\\
+When using third-party or overlay mechanisms, implementers must carefully assess the associated \textbf{security implications} and trust dependencies.
+
+\paragraph{4. Revocation in Trustless Systems}
+In a \textbf{trustless environment}, trust is derived solely from cryptographic proofs such as digital signatures.\\ 
+Metadata should not be relied upon for establishing trust.\\  
+Instead, all assertions must be verified through cryptographically provable means.
+
+\paragraph{5. DID Recovery and Key Rotation}
+Loss of control over a DID or its associated DID Document equates to loss of digital identity.\\
+Implementers should design recovery mechanisms that allow subjects to regain control.\\
+Best practices include:
+\begin{itemize}
+    \item performing periodic recovery operations;
+    \item rotating verification keys after each recovery event;
+    \item never reusing cryptographic material across updates.
+\end{itemize}
+Since no universal recovery mechanism exists, this functionality must be defined at the implementation level.
+
+\paragraph{6. Human-Friendly Identifiers}
+To improve usability, some systems bind complex DIDs to human-readable labels.\\
+While this can facilitate adoption, it introduces security risks similar to those observed in DNS (e.g., spoofing or hijacking).\\
+Implementers must therefore assess whether these mappings weaken the integrity of the underlying DID infrastructure.
+
+\paragraph{7. Extensibility and Encrypted Data}
+Although the DID specification supports extensibility, developers must never include \textbf{encrypted data} in publicly accessible DID Documents.\\
+Encryption algorithms may weaken over time due to advances in computational power or cryptanalysis, exposing previously secure data.\\
+Hence, encrypted information should not be stored on public VDRs.
+
+\paragraph{8. Immutability and Persistence}
+Immutability varies across different Distributed Ledger Technologies (DLTs).\\
+Some ensure strong immutability guarantees, while others rely on caching or overlay mechanisms.\\
+Similarly, persistence may not always be permanent: certain VDRs periodically \textbf{prune} data.\\
+Implementers must therefore verify:
+\begin{itemize}
+    \item the actual immutability model of the chosen VDR;
+    \item the data retention and pruning policy;
+    \item whether periodic re-anchoring or token deposits are required to maintain persistence.
+\end{itemize}
+
+\subsection{Privacy Considerations}
+
+The DID specification follows a \textbf{privacy-by-design} approach, ensuring that pseudonymity and minimal disclosure remain at the core of the architecture.\\
+Nevertheless, several additional considerations must be observed during design and deployment:
+
+\paragraph{1. Personal Data Protection}
+Never include personally identifiable information (PII) in DID Documents especially on public VDRs.\\  
+As with encrypted data, future cryptographic vulnerabilities could expose sensitive content.
+
+\paragraph{2. Subject Classification and Profiling}
+Avoid publishing data that allows third parties to infer whether the DID Subject represents a person, organization, or device.\\ 
+Minimizing semantic cues reduces the risk of unwanted profiling or linkage.
+
+\paragraph{3. Linkability and Pairwise DIDs}
+A major privacy goal is \textbf{unlinkability}.\\  
+If the same DID is reused across multiple systems, colluding entities can correlate activities and reconstruct user behavior.\\  
+To prevent this, the W3C recommends the use of \textbf{pairwise DIDs} — unique identifiers for each peer-to-peer interaction.\\  
+Additionally, changing public keys across DID Documents prevents linkage through cryptographic material.
+
+\subsection{Classification of Real-World DID Methods}
+
+In the current ecosystem, numerous DID Methods have been specified and implemented, each adopting different technologies and design principles.\\  
+Although there is no universally accepted taxonomy, a practical classification can be proposed based on the underlying \textbf{Verifiable Data Registry (VDR)} used.\\
+Three main classes can be identified:
+
+\begin{enumerate}
+    \item \textbf{DLT-based Methods:} rely on Distributed Ledger Technologies as the root of trust.
+    \item \textbf{Web-based Methods:} use the web infrastructure as the storage and resolution layer.
+    \item \textbf{Key-based Methods:} directly encode the cryptographic material within the DID itself, avoiding any VDR.
+\end{enumerate}
+
+\noindent
+\textbf{Comparison Features.}  
+When evaluating and comparing these categories, several factors should be considered:
+\begin{itemize}
+    \item \textbf{Immutability and persistence} of the underlying VDR.
+    \item \textbf{Performance} (read/write latency).
+    \item \textbf{Operational cost}.
+    \item \textbf{CRUD capabilities} = the ability to create, resolve, update, and delete DIDs.
+\end{itemize}
+
+\subsubsection {DLT-Based Methods: The \texttt{did:iota} Example}
+
+Among the existing DLT-based approaches, the \textbf{IOTA Identity Framework} provides a representative and well-documented example.\\  
+Developed by the \textbf{IOTA Foundation}, this method anchors DID Documents on the \textbf{Tangle}.
+
+\medskip
+
+\noindent
+The \textbf{Tangle} is a Directed Acyclic Graph (DAG) where each transaction validates two previous ones.  
+Unlike blockchain architectures, this approach scales efficiently with the number of incoming transactions, providing high throughput and fast confirmation times.
+
+\begin{itemize}
+    \item Each node represents a transaction.
+    \item Each new transaction must validate two existing ones.
+    \item Increased network activity results in higher parallel validation and scalability.
+\end{itemize}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/section_4/tangle.png}
+  \caption{IOTA Tangle structure: a Directed Acyclic Graph (DAG) of transactions.}
+  \label{fig:iota_tangle}
+\end{figure}
+
+\noindent
+A \textbf{Data Transaction} is used to anchor a DID Document on the Tangle.  
+Each transaction consists of:
+\begin{itemize}
+    \item \textbf{Header:} transaction metadata.
+    \item \textbf{Payload:} structured as:
+    \begin{itemize}
+        \item \texttt{meta} – metadata describing the DID Document.
+        \item \texttt{doc} – the actual DID Document content.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{Example of an Anchored DID Document}
+\begin{verbatim}
+{
+  "doc": {
+    "id": "did:0:0",
+    "verificationMethod": [{
+      "id": "did:0:0#jkGOGVO3Te7ADpvLplr47eP9ucLt41zm",
+      "controller": "did:0:0",
+      "type": "JsonWebKey",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "alg": "EdDSA",
+        "kid": "jkGOGVO3Te7ADpvLplr47eP9ucLt41zm",
+        "crv": "Ed25519",
+        "x": "D5w8vG6tKEnpBAia5J4vNgLID8k0BspHz-cVM..."
+      }
+    }],
+    "authentication": [
+      "did:0:0#jkGOGVO3Te7ADpvLplr47eP9ucLt41zm"
+    ]
+  },
+  "meta": {
+    "created": "2023-08-28T14:49:37Z",
+    "updated": "2023-08-28T14:50:27Z"
+  }
+}
+\end{verbatim}
+
+\noindent
+The Tangle prunes old transactions after a predefined retention period.\\ 
+To maintain persistence, two strategies are available:
+\begin{itemize}
+    \item Periodically re-anchor the DID Document before pruning occurs.
+    \item Lock a small token deposit to mark the transaction as non-prunable.
+\end{itemize}
+
+\noindent
+This illustrates the strong link between VDR behavior and the overall security and reliability of a DID Method.\\  
+Understanding the specific persistence model of the chosen DLT is therefore critical when designing an identity framework.
+
