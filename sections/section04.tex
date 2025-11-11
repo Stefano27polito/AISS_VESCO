@@ -1,0 +1,354 @@
+\section{Decentralized Identifier (DID)}
+It is a core of \textbf{layer 2} and is essentially the URI that let you inform someone else of where to access your public key.\\
+The controller of the DID is the entity that can store, change, update, the public key on the VDR. Typically, the subject and the controller are the same entity.\\
+
+\noindent
+Uniform Resource Identifier (URI) is composed by three distinct components:
+
+\begin{enumerate}
+    \item DID URI scheme identifier,
+    \item DID method identifier,
+    \item DID method-specific identifier.
+\end{enumerate}
+
+\medskip
+\begin{center}
+\texttt{did:method\_name:method\_specific\_id}
+\end{center}
+
+\medskip
+
+\noindent
+This string represents the structure of a DID.\\ 
+It begins with the URI scheme identifier \texttt{did}, followed by  the method name, which denotes the specific method used to interact with the chosen Verifiable Data Registry (VDR).\\ 
+Finally, the method-specific identifier corresponds to the unique address within that VDR where the public key and associated metadata can be retrieved.
+
+\smallskip
+
+\noindent
+For example, if a blockchain such as Bitcoin is used as the registry, the DID would take the form \texttt{did:btc:<identifier>}.
+
+\bigskip
+
+\noindent
+The design of the DID framework was guided by a set of fundamental goals and requirements established to ensure decentralization, user control, privacy, and interoperability within trustless digital ecosystems.  
+These principles define how DIDs and DID Documents operate across different Verifiable Data Registries (VDRs) and systems.
+
+\paragraph{Main Design Goals:}
+
+\begin{enumerate}
+    \item \textbf{Decentralization.}  
+    The DID architecture eliminates the need for a central authority. Every peer can directly interact with others, creating and managing their own identifiers independently of centralized identity providers.
+
+    \item \textbf{Control.}  
+    Each individual generating a DID must retain full control over it, including the capability to update or rotate their public keys. This ensures that the controller of a DID maintains exclusive authority over its lifecycle.
+
+    \item \textbf{Privacy.}  
+    The initial layers of the DID framework contain no personal data, supporting privacy by design. DIDs act as \textit{pseudonyms}: when an entity authenticates using a DID, the counterpart learns only the DID and its associated public key.  
+    A key privacy consideration is \textbf{linkability}: if the same DID is reused across multiple systems, those systems could collude and correlate user activity. To mitigate this, the concept of \textit{pairwise DIDs} is introduced (using a unique DID per interaction context) to prevent cross-system linkage.
+
+    \item \textbf{Security.}  
+    The system must guarantee a minimal yet robust level of security to ensure that other parties can rely on the authenticity and integrity of stored DID Documents.
+
+    \item \textbf{Proof-Based Design.}  
+    All identity generation and verification mechanisms are built upon \textit{cryptographic proofs}. This ensures reliability in trustless environments by replacing centralized trust with mathematically verifiable evidence.
+
+    \item \textbf{Discoverability.}  
+    DIDs should be easily discoverable to enable peers to establish trusted communication and verify identities through the associated DID Documents.
+
+    \item \textbf{Interoperability.}  
+    Given the coexistence of multiple VDRs and DID methods, interoperability is a core design goal. Different DIDs and VDR implementations must be able to interact seamlessly.  
+    \textit{Open standards} are the key enablers of interoperability across diverse implementations.
+
+    \item \textbf{Portability.}  
+    The DID framework is designed to be independent of any specific VDR. A DID can be migrated across different registries with minimal changes, allowing users to move their identities between distributed ledgers as needed (e.g., due to trust or technical reasons).
+
+    \item \textbf{Simplicity.}  
+    The standards aim to keep the specification lightweight and easy to implement. A limited set of core features ensures that DIDs and DID Documents remain straightforward for developers to adopt.
+
+    \item \textbf{Extensibility.}  
+    Both DIDs and related standards (e.g., Verifiable Credentials) are designed to be extensible. The data model allows the addition of new properties or metadata when required, provided that such extensions preserve security and privacy guarantees.
+\end{enumerate}
+
+
+\subsection{Architecture}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/section_4/did_architecture.png}
+  \caption{DID Architecture: core components and their interactions.}
+  \label{fig:did_architecture}
+\end{figure}
+
+The DID architecture defines several key relationships:
+
+\begin{itemize}
+    \item \textbf{DID $\rightarrow$ DID Document:}  
+    Each DID points to its corresponding DID Document, which contains the cryptographic material and descriptive metadata.
+
+    \item \textbf{DID URL:}  
+    A DID URL includes the DID itself and provides a reference to a specific resource or fragment within the DID Document.
+
+    \item \textbf{DID Subject:}  
+    The entity to which the DID refers—typically the person, organization, or device being identified.
+
+    \item \textbf{DID Controller:}  
+    The entity with the authority to manage and update the DID Document.  
+    In most implementations, the DID Subject and DID Controller are the same, although the standard allows them to be distinct entities.
+\end{itemize}
+
+\noindent
+At the core of architecture there is the \textbf{VDR} that acts as the foundational infrastructure that records both \textit{DIDs} and their corresponding \textit{DID Documents}.\\
+\\
+In practical terms, when a peer receives a DID, it can resolve it through the appropriate VDR using the specified \textit{DID Method}.\\  
+This resolution process retrieves the corresponding DID Document, allowing the peer to access the public key and verify the identity or signature of the DID owner.
+
+\subsection{DID Document}
+
+\begin{lstlisting}[language=json, caption={Esempio DID Document (W3C)}]
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:method_name:method_specific_id",
+  "verificationMethod": [
+    {
+      "id": "did:method_name:method_specific_id#fragment",
+      "type": "JsonWebKey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyJwk": "encoded key"
+    }
+  ]
+}
+\end{lstlisting}
+
+\noindent
+A \textit{Decentralized Identifier Document} (DID Document) is a \texttt{JSON}-formatted file that contains the information associated with a specific \textit{Decentralized Identifier} (DID).\\
+These documents are stored in the \textit{Verifiable Data Registry} (VDR).
+
+\medskip
+
+\noindent
+The creation process of a DID Document operates between \textbf{Layer~1} and \textbf{Layer~2}.\\
+The typical workflow includes:
+\begin{enumerate}
+    \item generating a cryptographic key pair (public/private keys);
+    \item creating the \textit{DID};
+    \item constructing the \textit{DID Document}, embedding the public key;
+    \item publishing the document on the VDR through the \textit{DID Method}, i.e., the software or API that enables interaction with the registry.
+\end{enumerate}
+
+\noindent
+The DID Document follows a standardized data model and contains the following core elements:
+\begin{itemize}
+    \item \textbf{@context}: defines the semantic context (the vocabulary) understood by the interacting peers;
+    \item \textbf{id}: represents the DID itself, serving as the unique identifier of the entity;
+    \item \textbf{verificationMethod}: specifies the verification mechanisms, essentially one or more public keys with additional metadata (such as identifiers and intended purposes);
+    \item \textbf{type}: indicates the key format, often a \textit{JSON Web Key} (JWK);
+    \item \textbf{controller}: identifies the entity controlling the DID and authorized to update the corresponding public keys;
+    \item \textbf{publicKeyJwk}: contains the encoded public key according to the JWK specification.
+\end{itemize}
+
+\noindent
+The DID Document serves as the foundational information layer for \textbf{identity verification} in decentralized systems.\\
+It enables the association between a DID and its public keys while transparently defining the rights of control and update within the VDR.
+
+\subsubsection{Properties}
+Within a \textit{DID Document}, different properties are used to describe the public keys and their corresponding purposes.\\  
+Each property defines how a public key is to be employed in various cryptographic operations.
+
+\begin{itemize}
+    \item \textbf{Authentication:}  
+    Specifies the public key intended for authentication processes, allowing a verifier to confirm the identity of the DID controller.
+
+    \item \textbf{Assertion Method:}  
+    Indicates the public keys used by an issuer of \textit{Verifiable Credentials} when asserting a claim.  
+    During the verification process, a verifier uses this key to validate the proof or signature produced by the issuer.
+
+    \item \textbf{Key Agreement:}  
+    Defines the public key used in key agreement protocols, e.g., for encrypting and securely exchanging a symmetric key between parties.
+\end{itemize}
+
+\subsubsection *{Verification Method Properties}
+Each verification method may include additional attributes that define its structure and operational parameters:
+
+\begin{itemize}
+    \item \textbf{id:} the unique identifier of the verification method or subject;
+    \item \textbf{controller:} the entity authorized to manage or update this verification method;
+    \item \textbf{type:} the type of verification method (e.g., cryptographic scheme used);
+    \item \textbf{publicKeyMultibase / publicKeyJwk:} the encoding format of the public key.  
+    Although \textit{JWK} (JSON Web Key) was previously common, the community is now transitioning toward \textit{Multibase} and \textit{Multikey} formats for greater flexibility and efficiency;
+    \item \textbf{revoked:} specifies the date when the key was revoked;
+    \item \textbf{expires:} defines the expiration date of the public key, after which it should no longer be considered valid.
+\end{itemize}
+
+\subsubsection*{Service Properties}
+A DID Document can also include one or more \textbf{service} entries, which inform other peers about endpoints or interfaces to interact with the DID subject.  
+Each service property includes the following sub-fields:
+
+\begin{itemize}
+    \item \textbf{id:} the unique identifier of the service;
+    \item \textbf{type:} the type or category of service being offered;
+    \item \textbf{serviceEndpoint:} the URL or endpoint through which peers can access or interact with the service.
+\end{itemize}
+
+\noindent
+These service definitions enable discoverability and communication within decentralized ecosystems, allowing other entities to locate and utilize the DID subject’s services.
+
+\subsection{DID Methods}
+
+The \textit{DID Method} represents the fundamental software logic that enables interaction between a DID controller (or subject) and the underlying \textbf{Verifiable Data Registry} (VDR).\\ 
+It defines how DIDs are generated, managed, and resolved within a specific VDR.\\
+In essence, the DID Method acts as the interface layer that ensures the framework remains \textbf{VDR-independent}, allowing peers operating on different distributed ledgers to interoperate as long as they implement the same DID Method specification.
+
+\bigskip
+
+\noindent
+When two peers wish to establish a trusted relationship, they exchange their DIDs.\\  
+Each peer must be able to:
+\begin{enumerate}
+    \item \textbf{Resolve} the counterpart’s DID to obtain the corresponding DID Document from the VDR.
+    \item \textbf{Retrieve} the public key contained in the document.
+    \item \textbf{Verify} identity and perform cryptographic operations (e.g., authentication, signature validation).
+\end{enumerate}
+This process may occur either on the same VDR or across different VDRs, provided that both parties use compatible DID Methods.
+
+\subsubsection{CRUD Operations}
+Each DID Method specification must define the procedures for performing the fundamental CRUD operations:
+\begin{itemize}
+    \item \textbf{Create:} generate a new DID and register its associated DID Document on the VDR.
+    \item \textbf{Read/Resolve:} retrieve an existing DID Document using the DID.
+    \item \textbf{Update:} modify an existing DID Document (e.g., rotate public keys, update service endpoints).
+    \item \textbf{Delete/Deactivate:} revoke or deactivate a DID and its associated document.
+\end{itemize}
+
+\noindent
+In distributed ledger technologies (DLTs), that guarantee immutability and persistence, permanent deletion is not possible.\\  
+Instead, a DID can be \textbf{deactivated}, meaning a cryptographic proof is recorded on the ledger indicating that the DID is no longer valid.  
+During resolution, this proof allows resolvers to recognize the DID’s deactivated status.
+
+\medskip
+
+\noindent
+Some DLTs, such as the \textit{IOTA Tangle}, allow pruning of transactions after a defined period unless permanent storage is explicitly requested.\\ 
+In these cases, deactivation may imply the removal of data from the active registry.
+
+\subsubsection *{Specification Requirements}
+Each DID Method specification must detail:
+\begin{itemize}
+    \item the \textbf{authorization procedures} required to execute CRUD operations, including cryptographic mechanisms used by the DID Controller;
+    \item how a \textbf{DID Controller} creates a DID and associates it with a DID Document on the target VDR;
+    \item how a \textbf{DID Resolver} uses a DID to fetch the corresponding DID Document and its public keys;
+    \item the allowed forms of \textbf{update operations} (e.g., overwriting an existing document versus appending to a chain of versions);
+    \item the procedure for \textbf{deactivation}, whether temporary or permanent.
+\end{itemize}
+
+\subsubsection *{Security and Privacy Considerations}
+Implementers of a DID Method must ensure that their design preserves the security and privacy guarantees of the DID architecture.\\  
+This includes protecting key material, preventing unauthorized updates, and avoiding mechanisms that could introduce correlation or linkability between DIDs across registries.
+
+\subsubsection *{NOTA BENE}
+It is important to distinguish between a \textbf{DID} and its corresponding \textbf{DID Document}.  
+While a DID serves as an identifier, the DID Document stores the associated metadata and public keys.  
+CRUD (or CRUD-like) operations apply to both:
+\begin{itemize}
+    \item a DID can remain persistent while its DID Document is updated or rotated;  
+    \item alternatively, a DID can be deactivated entirely, along with its document, and replaced with a newly created identifier.
+\end{itemize}
+
+\subsection{DID Resolution}
+
+\textbf{DID Resolution} refers to the process of retrieving a DID Document from the \textbf{VDR}, given a specific DID.
+\smallskip
+
+\noindent
+It corresponds to the ``R'' operation in the CRUD model (\textit{Create, Resolve, Update, Delete/Deactivate}).\\ 
+Since every VDR implements its own mechanisms for accessing stored data, the resolution process may differ across DID Methods.
+
+\medskip
+
+\noindent
+The software or hardware component responsible for performing this task is called a \textbf{DID Resolver}.
+
+\subsubsection *{The Resolve Function}
+The resolution process is formalized through the following general function:
+
+\begin{verbatim}
+resolve(did, resolutionOptions) -> 
+    didResolutionMetadata, didDocument, didDocumentMetadata
+\end{verbatim}
+
+\noindent
+This function requires:
+\begin{itemize}
+    \item a \textbf{DID} to be resolved;
+    \item a set of \textbf{resolution options} that define how the resolver should operate.
+\end{itemize}
+
+\noindent
+The resolver returns:
+\begin{itemize}
+    \item \texttt{didResolutionMetadata} – metadata describing the resolution process and its outcome;
+    \item \texttt{didDocument} – the resolved DID Document, if the process is successful;
+    \item \texttt{didDocumentMetadata} – metadata associated with the resolved DID Document.
+\end{itemize}
+
+\subsubsection *{Resolution Properties}
+
+\noindent
+\begin{center}
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{0.35\textwidth}|
+>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Property} & \textbf{Description} \\
+\hline
+\texttt{did} & The DID to be resolved. \\
+\texttt{resolutionOptions} & A metadata structure providing options to guide the resolution process. \\
+\texttt{didResolutionMetadata} & Structure containing the results and status of the resolution. \\
+\texttt{didDocument} & The resolved DID Document (if successful). \\
+\texttt{didDocumentMetadata} & Metadata describing the retrieved DID Document. \\
+\hline
+\end{tabularx}
+\end{center}
+
+\smallskip
+\textit{Table: Main properties of the DID Resolution function.}
+
+
+\subsubsection *{Resolution Options}
+Resolution options refine the behavior of the resolver.\\  
+They allow the caller to specify preferences or constraints for how the DID Document is returned.
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{0.35\textwidth}|
+>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Property} & \textbf{Description} \\
+\hline
+\texttt{accept} & Defines the media type preferred for the returned DID Document. \\
+\texttt{expandRelativeUrls} & Boolean flag to instruct the resolver to expand relative DID URLs to absolute ones. \\
+\texttt{versionId} & Specifies a particular version of the DID Document to be resolved. \\
+\texttt{versionTime} & Timestamp corresponding to the version of the DID Document to be retrieved. \\
+\hline
+\end{tabularx}
+\caption{Available options for the DID Resolution process.}
+\end{table}
+
+\subsubsection *{Resolution Metadata}
+The \texttt{didResolutionMetadata} field contains information about the outcome of the resolution process, including success or error conditions.
+
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{0.25\textwidth}|
+>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Property} & \textbf{Description} \\
+\hline
+\texttt{contentType} & The media type of the returned DID Document. \\
+\texttt{error} & Data structure describing possible errors during the resolution process. \\
+\hline
+\end{tabularx}
+\caption{Metadata returned by the DID Resolution process.}
+\end{table}

@@ -12,7 +12,30 @@
 \usepackage{wrapfig}             % Text wrapping around figures
 \usepackage{soul}                % Highlighting text
 \usepackage{float}               % Float control for figures/tables
+\usepackage{placeins}            % Float barriers
 \usepackage{tcolorbox}           % Colored boxes
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\renewcommand{\arraystretch}{1.15} % leggero spazio tra righe
+\usepackage{listings}
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\small,
+    numbers=left,
+    numberstyle=\tiny,
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!5},
+    literate=
+     *{:}{{{\color{black}{:}}}}{1}
+      {,}{{{\color{black}{,}}}}{1}
+      {"}{{{\color{orange}{"}}}}{1},
+}
+
+
 
 \graphicspath{{./images/}} % Path for images
 
@@ -36,6 +59,13 @@
 
 \def\slides{slides/sample-2.pdf}
 \include{sections/section02}
+
+\def\slides{slides/sample-2.pdf}
+\include{sections/section03}
+\include{sections/section04}
+
+
+\include{sections/exercises}
 
 \appendix
 \section{Appendix A}

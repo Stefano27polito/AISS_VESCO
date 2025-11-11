@@ -1,0 +1,143 @@
+\section {Exercises}
+
+The following exercises are designed to consolidate the understanding of the \textit{DID Document} data model and its key components, such as verification methods and service properties.  
+Each task focuses on constructing and extending DID Documents according to the W3C DID specification (v1.1).  
+Students are encouraged to reflect on the semantics of each property before reviewing the provided reference solution.
+
+\subsection{Exercise 1: Two Verification Methods}
+\textbf{Goal:} Create a simple DID Document containing two verification methods, without specifying any particular purpose for their usage.
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:method_name:method_specific_id",
+  "verificationMethod": [
+    {
+      "id": "did:method_name:method_specific_id#key-1",
+      "type": "Multikey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyMultibase": "… encoded key …"
+    },
+    {
+      "id": "did:method_name:method_specific_id#key-2",
+      "type": "JsonWebKey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyJwk": {
+        "kid": "key-34",
+        "kty": "EC",
+        "crv": "P-256",
+        "alg": "ES256",
+        "x": "… the X value …",
+        "y": "… the Y value …"
+      }
+    }
+  ]
+}
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+The document defines two independent public keys. The first uses the \texttt{Multikey} encoding, while the second adopts a \texttt{JSON Web Key (JWK)} format.
+
+\subsection{Exercise 2: Authentication and Assertion Methods}
+\textbf{Goal:} Create a DID Document with two verification methods, each explicitly linked to a specific purpose: authentication and assertion.
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:method_name:method_specific_id",
+  "authentication": [
+    {
+      "id": "did:method_name:method_specific_id#key-1",
+      "type": "Multikey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyMultibase": "… encoded public key …"
+    }
+  ],
+  "assertionMethod": [
+    {
+      "id": "did:method_name:method_specific_id#key-2",
+      "type": "Multikey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyMultibase": "… encoded public key …"
+    }
+  ]
+}
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+Two separate public keys are published: one for authentication purposes and one for assertion.  
+Both are controlled by the same DID subject.
+
+\subsection{Exercise 3: Using Fragments and References}
+\textbf{Goal:} Extend the previous document by defining references to the verification methods using fragments (\#key-1, \#key-2).
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:method_name:method_specific_id",
+  "verificationMethod": [
+    {
+      "id": "did:method_name:method_specific_id#key-1",
+      "type": "Multikey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyMultibase": "… encoded key …"
+    },
+    {
+      "id": "did:method_name:method_specific_id#key-2",
+      "type": "JsonWebKey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyJwk": {
+        "kid": "key-256",
+        "kty": "EC",
+        "crv": "P-256",
+        "alg": "ES256",
+        "x": "… the X value …",
+        "y": "… the Y value …"
+      }
+    }
+  ],
+  "authentication": [
+    "#key-1"
+  ],
+  "assertionMethod": [
+    "#key-2"
+  ]
+}
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+Fragments are used to reference specific verification methods within the same DID Document.  
+This structure promotes clarity and reuse of key definitions.
+
+\subsection{Exercise 4: Authentication and Service Advertisement}
+\textbf{Goal:} Create a DID Document that defines one verification method for authentication and one service endpoint for peer interaction.
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:method_name:method_specific_id",
+  "verificationMethod": [
+    {
+      "id": "did:method_name:method_specific_id#key-1",
+      "type": "Multikey",
+      "controller": "did:method_name:method_specific_id",
+      "publicKeyMultibase": "… encoded key …"
+    }
+  ],
+  "service": [
+    {
+      "id": "did:method_name:method_specific_id#message",
+      "type": "Messaging",
+      "serviceEndpoint": "https://www.polito.it/service/messaging"
+    }
+  ]
+}
+\end{verbatim}
+
+\noindent
+\textbf{Comment:}  
+The document advertises a messaging service while defining a single verification method for authentication.  
+Multiple services can be published as an array under the \texttt{service} property if needed.
