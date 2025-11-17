@@ -823,3 +823,142 @@ Web-based deployments must also consider classic DNS-based attacks such as redir
 \subsubsection*{Privacy considerations}
 The main privacy concerns associated with the \texttt{did:web} method relate to tracking and linkability.\\ 
 Because DID resolution relies on DNS and standard HTTPS requests, both the DNS operator and the web server hosting the DID Document can observe when a specific DID is being resolved.
+\newpage
+
+\subsubsection{Key-based Methods}
+
+Key-based DID methods do not rely on a verifiable data registry (VDR).  
+Instead of resolving information from an external infrastructure, the DID itself
+encodes the public key, and the corresponding DID Document can be derived directly from it.
+
+\medskip
+
+\noindent
+These methods are intended for short-lived or static identifiers that do not require
+updates, persistence guarantees, or anchoring on a distributed ledger.  
+A \texttt{did:key} identifier has the form:
+\[
+\texttt{did:key:<mb-value>}
+\]
+
+\noindent
+where the \texttt{mb-value} is a \textit{Multibase base58-btc} encoded string constructed by concatenating:
+\begin{itemize}
+    \item a two-byte Multikey prefix identifying the public key type, and
+    \item the raw bytes of the public key.
+\end{itemize}
+
+\noindent
+The resulting byte sequence is encoded using the base58-btc alphabet and then
+prepended with the Multibase header \texttt{z}.  
+This encoding makes the DID entirely self-contained: anyone who receives a
+\texttt{did:key} identifier can decode the prefix to determine the key type and can extract the public key bytes directly.
+
+\medskip
+
+\noindent
+For example, an Ed25519 public key uses:
+\begin{itemize}
+    \item the Multikey prefix \texttt{0xED01},
+    \item followed by 32 bytes of public key material,
+    \item producing a 34-byte value that is Base58-btc encoded,
+    \item and finally prefixed with \texttt{z}.
+\end{itemize}
+
+\noindent
+Other key types follow the same encoding scheme, differing only in the two-byte prefix
+(e.g., ECDSA P-256, ECDSA P-384, BLS12-381 G2, SM2).  
+Since no encryption is involved, the purpose of this encoding is not confidentiality
+but interoperability: it provides a standardized way for peers to decode both the
+key type and the associated public key.
+
+\medskip
+
+\noindent
+Because the public key is embedded directly into the DID string, the
+\texttt{did:key} method does not support traditional CRUD operations nor any form of
+stateful updates.\\  
+It is most suitable when the goal is simply to share a public key in a compact,
+self-contained manner, without relying on a VDR or requiring long-term identity management.
+\medskip
+
+\begin{quotation}
+  \noindent
+  \textit{
+  Although terms such as “create” and “resolve” are used in the \texttt{did:key} 
+  specification, these operations do not correspond to CRUD operations on a 
+  verifiable data registry. In this method, “create” simply refers to generating 
+  a key pair and encoding the public key into the DID, while “resolve” refers to 
+  locally expanding the DID into a deterministic DID Document. 
+  Since no external registry is used, \texttt{did:key} does not support update, 
+  deactivation, or deletion, and is therefore considered a stateless, non-CRUD 
+  DID method.
+  }
+\end{quotation}
+
+\subsubsection*{CRUD: Create}
+In key-based DID methods such as \texttt{did:key}, the creation process is entirely local and does not involve a verifiable data registry.\\ Creating a DID consists of generating a new key pair and encoding the 
+public key using the Multikey format. \\
+The encoded value is then prefixed with \texttt{did:key:}, producing an identifier that directly embeds the public key. The associated DID Document can be derived deterministically from this encoded value.
+
+\subsubsection*{CRUD: Resolve}
+
+In key-based DID methods such as \texttt{did:key}, the resolve operation does not involve any network request or interaction with a verifiable data registry. Instead, resolution is a purely local and deterministic process.\\
+When a peer receives a \texttt{did:key} identifier, it knows that the method specification requires expanding the encoded public key into a fixed DID Document structure.
+\medskip
+
+\noindent
+Resolving a \texttt{did:key} therefore consists of:
+\begin{itemize}
+    \item decoding the \texttt{mb-value} to recover the Multikey prefix and the raw public key bytes,
+    \item constructing the DID Document using the standard template defined by the method,
+    \item assigning the DID itself as the value of both the \texttt{id} and \texttt{controller} fields,
+    \item inserting the decoded public key into the appropriate verification method entry.
+\end{itemize}
+
+\noindent
+Since the DID contains all necessary information, no external lookup is required. The resulting DID Document is used mainly for authentication (and optionally for assertion), following the verification methods specified by the \texttt{did:key} method. Because the public key is embedded directly in the DID, resolution merely reconstructs the corresponding document; it does not involve state changes or network resolution steps.
+
+\subsubsection *{Limitations and Security Considerations of \texttt{did:key}}
+The \texttt{did:key} method does not support update, rotation, or deactivation.\\
+If a new key is required, a completely new DID must be generated.\\  
+For this reason, the method is intended only for static or short-lived identifiers,where keys can simply be discarded rather than revoked.\\  
+No specific privacy considerations are defined in the specification, as the method does not interact with any external verifiable data registry.
+\vspace{1 cm}
+
+\subsubsection {Comparison of DID Methods}
+
+Different DID methods offer different trade-offs in terms of immutability, performance, cost, and CRUD support:
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Method} & \textbf{Immut.} & \textbf{Perf.} & \textbf{Cost} & \textbf{CRUD} \\ \hline
+
+DLT-based 
+& High* 
+& Slow write / fast read 
+& Fees 
+& Full (delete = deactivate) \\ \hline
+
+\texttt{did:web} 
+& None 
+& Fast write 
+& None 
+& Yes (file ops) \\ \hline
+
+\texttt{did:key} 
+& None 
+& Very fast 
+& None 
+& No update / no deact. \\ \hline
+
+\end{tabular}
+
+\smallskip
+\raggedright
+\footnotesize *Depends on ledger and access overlays.
+\end{table}
+
