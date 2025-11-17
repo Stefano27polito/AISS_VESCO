@@ -586,3 +586,240 @@ To maintain persistence, two strategies are available:
 This illustrates the strong link between VDR behavior and the overall security and reliability of a DID Method.\\  
 Understanding the specific persistence model of the chosen DLT is therefore critical when designing an identity framework.
 
+\subsubsection *{CRUD: Create}
+
+To create a DID, whit DLT-based method, two elements are required: 
+\begin{itemize}
+    \item an address for which the private key is available, used to sign transactions on the DLT
+    \item enough funds to generate the Identity Object and publish the transaction containing the DID Document
+\end{itemize}
+
+\noindent
+The creation process follows three main steps:
+\begin{enumerate}
+    \item \textbf{Create the DID Document}, which defines the structure and information of the decentralized identity.
+    \item \textbf{Build the header and payload of the transaction}, where the DID Document is included.
+    \item \textbf{Execute the transaction}. After the transaction is confirmed on the ledger, the DID and its DID Document become publicly available. \\
+    The ledger returns an Object ID, typically the hash of the transaction, which acts as the IOTA tag or method-specific identifier of the DID.
+\end{enumerate}
+
+\noindent
+For DID methods based on real DLTs, users often handle at least two key pairs: one that represents their pseudonym on the ledger for signing transactions, and another linked to their SSI for managing the DID.
+
+\subsubsection* {CRUD: Resolve}
+
+To resolve a DID, the following steps must be performed:
+\begin{enumerate}
+    \item Extract the Object ID from the DID by obtaining its \textit{iota-tag}.
+    \item Determine the network from the DID by extracting the \textit{iota-network}.
+    \item Query the corresponding IOTA network (Tangle) to retrieve the referenced transaction.
+    \item Verify that the Object ID of the retrieved transaction matches the Object ID extracted from the DID; otherwise, return an error.
+    \item Parse the retrieved transaction into an Identity Object.
+    \item Check that the Identity Object is not marked as deleted; if it is, return an error.
+    \item Decode the DID Document from its byte-packed encoding contained in the Identity Object.
+    \item Replace the placeholder \texttt{did:0:0} with the actual \textit{iota-tag} taken from the resolved DID.
+\end{enumerate}
+
+\noindent
+Two libraries typically support this procedure: the IOTA client, which enables communication with the Tangle and the execution of transactions, and the IOTA Identity framework, which provides the necessary functions to interpret and manage decentralized identities.heading
+\bigskip
+
+\subsubsection*{CRUD: Update}
+This operation requires two steps:
+\begin{enumerate}
+    \item \textbf{Create a copy of the DID Document} and explicitly set its current Object ID.
+    \item \textbf{Apply the local modifications} to the DID Document (e.g. adding or removing keys, services, or metadata).
+    \item \textbf{Execute the transaction} that publishes the updated DID Document to the Tangle.
+\end{enumerate}
+
+\noindent
+Each update produces a new Object ID, allowing the DLT to maintain the full history of changes.\\
+This mechanism ensures that every modification is traceable and that previous states of the DID Document remain accessible if needed. In this approach, updating simply means creating a revised document, assigning it a new Object ID, and submitting the update to the distributed ledger.
+
+\subsubsection*{CRUD: Delete / Deactivate}
+
+A DID Document can be deleted or deactivated using two main approaches:
+\begin{itemize}
+    \item \textbf{Clear the encoded DID Document} inside the Identity Object by replacing it with an empty byte array, and publish the update.
+    \item \textbf{Update the DID Document} and set its \texttt{deactivated} metadata field to \texttt{true}, then publish the update.
+\end{itemize}
+
+\noindent
+In both cases, when the DID is later resolved, the resolver will detect that the DID Document has been deactivated.
+\medskip
+
+\noindent
+There is also an alternative method for permanent deletion: \\
+A controller may request the return of the deposit associated with the transaction. \\
+After a certain period, the Tangle prunes the transaction that contained the DID Document, effectively removing it from the DLT. \\
+However, the exact timing of this pruning cannot be predicted, which is why explicit deactivation is generally preferred. Deactivation provides immediate and reliable information to anyone resolving the DID that the controller has intentionally disabled it.
+
+\subsubsection *{Security Considerations}
+Each DID method specification includes a set of security and privacy considerations that must be evaluated when deploying or using the method.\\ 
+For the DLT-based method, the core security requirement is straightforward: \textbf{private keys must be protected}.\\
+Since the ability to control, update, or deactivate a DID depends entirely on the corresponding private keys, their confidentiality and integrity are essential to prevent unauthorized access or identity takeover.
+
+\subsubsection *{Privacy Considerations}
+
+Several privacy aspects must be considered when using DLT method:
+
+\begin{itemize}
+    \item \textbf{Immutability and persistence of the Tangle:}\\  
+    DLT provides strong persistence, meaning that published transactions may remain permanently accessible. As a result, any information ever written to the ledger may remain available over time, expecially if the Tangle is managed by third parties.\\
+
+    \item \textbf{Avoid including personal data in DID Documents:}\\  
+    Following general W3C guidelines, DID Documents should not contain personal or sensitive information.
+
+    \item \textbf{Linkability of DIDs:}\\  
+    Reusing the same DID across multiple interactions can allow observers to correlate activities.\\ To mitigate this risk, using \textit{pairwise DIDs}(one DID per relationship or interaction) is recommended.\\
+    Limiting changes to metadata and signatures also helps reduce the chance of unintended linkability.
+\end{itemize}
+
+\noindent
+These considerations ensure that DID usage does not unintentionally expose personal information or allow long-term correlation of identity-related activities.
+\newpage
+
+\subsubsection {Web-based Methods}
+Many experts believe that a single, universal DLT for anchoring identities will never emerge. \\
+Based on this assumption, some groups have proposed DID methods that do not rely on any DLT at all.\\
+One example is \texttt{did:web}, which uses the existing web infrastructure as its trust layer. This method enables any entity to manage a DID through a standard web domain and relies on widely deployed technologies such as HTTPS and DNS for DID operations and resolution.
+\bigskip
+
+\noindent
+Using the \texttt{did:web} method requires:
+\begin{itemize}
+    \item a web domain under the controller's control (or permission to use an existing domain for identity purposes);
+    \item the ability to host static files on the web server;
+    \item HTTPS enabled on the domain.
+\end{itemize}
+
+\noindent
+When resolving a \texttt{did:web} identifier, the target system is the domain name or host name specified in the DID itself. The DID is resolved by retrieving a \texttt{did.json} file located at a predictable path on the HTTPS server.
+
+\subsubsection*{Examples of \texttt{did:web} Structures}
+
+\paragraph{1. Root domain DID}  
+A DID may refer to the root of a domain:
+\[
+\texttt{did:web:example.it}
+\]
+In this case, the DID Document must be hosted at:
+\[
+\texttt{https://example.it/.well-known/did.json}
+\]
+The \texttt{.well-known} directory is required when the DID points directly to the root domain.
+
+\paragraph{2. Subdirectory DID}  
+A DID may also reference a specific subdirectory:
+\[
+\texttt{did:web:example.it:departmentA}
+\]
+The DID Document is then located at:
+\[
+\texttt{https://example.it/departmentA/did.json}
+\]
+In this case, the \texttt{.well-known} directory is not needed, as the DID explicitly identifies the directory where the document resides.
+
+\paragraph{3. Path-based (DPath) DID}  
+Another option is to use additional path segments after the domain name, such as:
+\[
+\texttt{did:web:example.it:users:alice}
+\]
+The corresponding DID Document would be hosted at:
+\[
+\texttt{https://example.it/users/alice/did.json}
+\]
+This structure allows more granular and hierarchical organization of identities under the same domain.
+
+\subsubsection*{Example of a \texttt{did:web} DID Document}
+
+The \texttt{did:web} method follows the general structure defined by the W3C DID Core specification.\\
+A DID Document typically contains:
+\begin{itemize}
+    \item the \texttt{@context} field defining the version of the DID specification,
+    \item the DID identifier,
+    \item one or more verification methods (including their ID, type, controller, and public key),
+    \item optional authentication mechanisms,
+    \item optional service endpoints.
+\end{itemize}
+
+\noindent
+In the example below, the controller exposes a single verification method using a JSON Web Key (JWK) in the Ed25519 format. The key is referenced again in the \texttt{authentication} section to indicate that it can be used for proving control over the DID.
+
+\begin{verbatim}
+{
+  "@context": "https://www.w3.org/ns/did/v1.1",
+  "id": "did:web:example.it",
+  "verificationMethod": [{
+    "id": "did:web:example.it#key-1",
+    "type": "JsonWebKey",
+    "controller": "did:web:example.it",
+    "publicKeyJwk": {
+      "kty": "OKP",
+      "alg": "EdDSA",
+      "crv": "Ed25519",
+      "kid": "key-1",
+      "x": "...encoded key..."
+    }
+  }],
+  "authentication": [
+    "did:web:example.it#key-1"
+  ]
+}
+\end{verbatim}
+
+\subsubsection *{CRUD: Create}
+The CREATE operation for \texttt{did:web} is conceptually simple: the controller generates a DID Document and publishes it as a \texttt{did.json} file on a web server. \\
+Depending on the DID structure, the file is placed either in the \texttt{.well-known} directory or in a specific subdirectory of the domain.\\
+From the perspective of self-sovereign identity, the system consists simply of a web server hosting the DID Document, which can be resolved through DNS and retrieved over HTTPS
+\medskip
+
+\noindent
+Although the operation itself is straightforward, it requires proper authorization to write, update, or delete files on the server. This means that the web server must implement its own authentication and access-control mechanisms to ensure that only authorized users can modify the DID Document. These mechanisms are completely outside the scope of the \texttt{did:web} specification.
+
+\subsubsection*{CRUD: Resolve}
+
+Resolving a \texttt{did:web} identifier consists of translating the DID into a valid HTTPS URL and retrieving the corresponding \texttt{did.json} file.\\
+The resolution process follows these steps:
+\begin{enumerate}
+    \item Replace each colon (``:'') in the method-specific identifier with a slash (``/'').
+    \item Prepend \texttt{https://} to form the base of the URL.
+    \item If the DID does not include a path component, append \texttt{/.well-known}.
+    \item Append \texttt{/did.json} to obtain the full expected location of the DID Document.
+    \item Send an HTTPS \texttt{GET} request to this URL and retrieve the \texttt{did.json} file.
+    \item Verify that the \texttt{id} field inside the resolved DID Document matches the original DID.
+\end{enumerate}
+
+\noindent
+In practice, resolving simply requires parsing the DID into a URL, handling the presence or absence of subdirectories, and using DNS and HTTPS to fetch the DID Document.
+
+\subsubsection*{CRUD: Update}
+Simply store the new DID.JSON in the right path on the server. \\
+Update, as for the create, requires authentication and authorization to the server.\\
+Again, how to deal with this authentication and authorization is completely out of scope of the DID web method specification.
+
+\subsubsection*{CRUD: Delete}
+In this case, we can really delete a file, or make it no longer publicly available.
+
+\subsubsection*{Security Considerations}
+
+The security considerations for the \texttt{did:web} method focus mainly on the protection of the web environment hosting the DID Document. Since \texttt{did:web} does not rely on a distributed ledger, the controller must ensure proper authentication and authorization mechanisms on the server.
+\medskip
+
+\noindent
+Unlike DLT-based methods, web servers do not inherently provide immutability. Although persistence can be achieved, the integrity of the DID Document must be actively protected. \\
+One recommended approach is to compute the hash of the \texttt{did.json} file and store it in an immutable verifiable data infrastructure, such as a DLT. Hardware-based mechanisms, such as a Trusted Platform Module (TPM), may also be used to measure the file and allow a remote verifier to check periodically that the hash has not changed.
+\medskip
+
+\noindent
+If an attacker gains control over the DID Document, they could replace the public key with their own and use the corresponding private key. Since Proof of Control relies on challenge--response mechanisms 
+involving the keys declared in the document, maintaining integrity is critical for preventing identity takeover. \\
+In \texttt{did:web}, Proof of Control may refer to the domain, a hostname, or a specific user when subdirectories are used. Therefore, the verifier must confirm that the correct entity---not merely the domain owner---is controlling the DID.
+\medskip
+
+\noindent
+Web-based deployments must also consider classic DNS-based attacks such as redirection or man-in-the-middle. Strong protections against DNS manipulation, along with the use of up-to-date transport-layer security (e.g., TLS~1.3), are required when publishing or resolving \texttt{did:web} identifiers.
+
+\subsubsection*{Privacy considerations}
+The main privacy concerns associated with the \texttt{did:web} method relate to tracking and linkability.\\ 
+Because DID resolution relies on DNS and standard HTTPS requests, both the DNS operator and the web server hosting the DID Document can observe when a specific DID is being resolved.
