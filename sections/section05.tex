@@ -104,3 +104,575 @@ schemas, and auxiliary validation data.
     The Verifiable Data Registry maintains identifiers, schemas, and revocation data.}
     \label{fig:vc-roles-flow}
 \end{figure}
+
+
+%%
+\subsection {Verifiable Credential Structure}
+
+A verifiable credential contains a structured set of information describing the subject.\\
+The VC data model defines a minimal mandatory structure while allowing extensibility so that issuers may include additional attributes when needed.\\ 
+The most relevant components are the following:
+
+\paragraph{Subject Information.}
+The credential contains claims about the subject. \\ 
+These claims represent identity attributes or properties (e.g., name, role, device characteristics) and are expressed in a structured JSON object. \\
+One essential element is the subject’s \textbf{DID}, which links the credential to the subject’s decentralized identifier.
+
+\paragraph{Issuer Information.}
+Each credential specifies the \textbf{issuer}, identified by a DID.\\  
+This allows a verifier to locate the issuer’s public key and to validate the issuer’s signature during the verification process.
+
+\paragraph{Credential Type.}
+VCs indicate their type, which may represent generic classes (e.g., 
+\texttt{VerifiableCredential}) or domain-specific credentials such as a university degree or a device-attestation credential. \\ 
+Types enable verifiers to interpret the structure and semantics of the claims.
+
+\paragraph{Claims and Assertions.}
+The issuer is responsible for determining the truthfulness of all claims before including them in the credential. \\ 
+In many human-oriented scenarios, this implies verifying attributes through real-world processes (e.g., checking a physical ID document). \\ 
+In automated or IoT settings, claims may instead be verified digitally within a controlled environment.
+
+\paragraph{Credential Constraints.}
+A credential may include additional metadata such as usage constraints, validity periods, or purpose-specific fields. \\ 
+These help verifiers correctly interpret the credential and determine whether it is acceptable in their context.
+
+\paragraph{Proof.}
+Each verifiable credential contains a cryptographic \textbf{proof} section, normally a digital signature produced by the issuer. \\ 
+This proof ensures authenticity, integrity, and tamper-evidence of the credential.
+
+\medskip
+
+\noindent
+A verifiable credential can therefore be understood as a structured combination of:
+\begin{itemize}
+    \item metadata,
+    \item claims describing the subject,
+    \item and a cryptographic proof from the issuer.
+\end{itemize}
+Together, these elements allow the credential to be validated by any verifier that trusts the issuer and can interpret the associated schema.
+\subsection{VC Components}
+
+\subsubsection*{Subject and Claims}
+
+A claim is a statement about a subject.  
+Claims follow a \textbf{subject–property–value} structure, allowing the issuer
+to describe specific attributes of the credential subject.  
+Compared to DID, verifiable credentials allow richer and more expressive
+descriptions, enabling issuers to represent detailed identity information.
+
+\begin{verbatim}
+{
+  "credentialSubject": {
+    "id": "did:example:abcdef",
+    "name": "Alice Example",
+    "age": 23
+  }
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Context}
+
+The \texttt{@context} property defines the vocabulary used to interpret the 
+credential.  
+It specifies the VC data model version (typically W3C VC~2.0) and any additional
+namespaces supporting the claims contained in the credential.
+
+\begin{verbatim}
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2"
+  ]
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Identifiers}
+
+The \texttt{id} is the unique identifier of the credential.  
+It is a stable URI assigned by the issuer and allows a verifier to reference the
+credential—e.g., when checking revocation information.
+
+\begin{verbatim}
+{
+  "id": "https://example.org/credentials/235"
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Type}
+
+The \texttt{type} array describes the category of the credential.  
+It must always include \texttt{"VerifiableCredential"}, followed by one or more
+application-specific types (e.g.\ \texttt{"DegreeCredential"}).
+
+\begin{verbatim}
+{
+  "type": [
+    "VerifiableCredential",
+    "DegreeCredential"
+  ]
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Issuer}
+
+The \texttt{issuer} identifies the entity that created and signed the credential.  
+It may be:
+\begin{itemize}
+    \item a URL controlled by the issuer, or  
+    \item a DID, allowing retrieval of the issuer’s DID Document and public key.
+\end{itemize}
+
+\begin{verbatim}
+{
+  "issuer": "did:example:issuer1234"
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Name and Description}
+
+These optional properties provide human readable information about the issuer,
+such as name and a short description.  
+They are rarely needed but may clarify credential provenance.
+
+\begin{verbatim}
+{
+  "issuer": {
+    "id": "did:example:issuer1234",
+    "name": "Politecnico di Torino",
+    "description": "Engineering University"
+  }
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Validity Period}
+
+The \texttt{validFrom} and \texttt{validUntil} fields define the time interval
+during which the credential is valid.  
+Credentials may expire (e.g.\ tickets, access tokens), and expiration is distinct
+from revocation.
+
+\begin{verbatim}
+{
+  "validFrom": "2025-10-18T11:12:23Z",
+  "validUntil": "2026-10-18T11:12:23Z"
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Credential Subject}
+
+The \texttt{credentialSubject} contains the claims about the subject, usually 
+identified by a DID.  
+Its structure must follow a schema published by the issuer on a verifiable data
+registry, allowing verifiers to correctly interpret the semantics of the claims.
+
+\begin{verbatim}
+{
+  "credentialSubject": {
+    "id": "did:example:subject789",
+    "degree": {
+      "type": "BachelorDegree",
+      "name": "BSc Computer Engineering"
+    }
+  }
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Status}
+
+The \texttt{credentialStatus} field indicates how a verifier can check whether the
+credential has been revoked or suspended.  
+VC~2.0 commonly uses a \textbf{Bitstring Status List}, where each credential is
+assigned a bit index:
+\begin{itemize}
+    \item 0 → credential is valid  
+    \item 1 → credential is revoked or suspended  
+\end{itemize}
+
+\noindent
+This mechanism is efficient, compressible, and suitable when most credentials
+remain valid.
+
+\begin{verbatim}
+{
+  "credentialStatus": {
+    "id": "https://issuer.example.org/status/1",
+    "type": "BitstringStatusListEntry",
+    "statusPurpose": "revocation",
+    "statusListIndex": "235",
+    "statusListCredential": "https://issuer.example.org/status/1"
+  }
+}
+\end{verbatim}
+
+\medskip
+
+\subsubsection*{Basic Components: Proof}
+
+The \texttt{proof} section contains the issuer’s cryptographic signature.  
+It guarantees the authenticity and integrity of the credential and includes:
+\begin{itemize}
+    \item the proof type (e.g.\ Data Integrity Proof),
+    \item the cryptographic suite used,
+    \item the creation time,
+    \item the verification method (reference to the issuer’s public key),
+    \item the actual proof value.
+\end{itemize}
+
+\begin{verbatim}
+{
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "created": "2025-10-18T11:12:23Z",
+    "verificationMethod": "did:example:issuer1234#key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z3W5e8..."
+  }
+}
+\end{verbatim}
+
+\subsubsection {Advanced Proof Structures}
+
+Beyond the basic single-signature model, the VC 2.0 specification supports more advanced proof mechanisms that allow multiple entities to sign the same credential or to sign it in a defined order.\\
+These structures extend the expressiveness of the \texttt{proof} property and support more complex trust and attestation workflows.
+
+\paragraph{Proof Set.}
+A \emph{proof set} is an array of independent proofs, each created by a different entity.  \\
+It is useful when the same credential must be signed by multiple issuers or authorities.  \\
+The order of the proofs does not matter: each proof independently attests the integrity and authenticity of the credential.
+
+\begin{verbatim}
+"proof": [
+  {
+    "type": "DataIntegrityProof",
+    "verificationMethod": "did:example:issuer1#key-1",
+    "proofPurpose": "assertionMethod",
+    "created": "2025-10-18T12:00:00Z",
+    "proofValue": "zProofValue1"
+  },
+  {
+    "type": "DataIntegrityProof",
+    "verificationMethod": "did:example:issuer2#key-3",
+    "proofPurpose": "assertionMethod",
+    "created": "2025-10-18T12:05:00Z",
+    "proofValue": "zProofValue2"
+  }
+]
+\end{verbatim}
+
+\paragraph{Proof Chain.}
+A \emph{proof chain} is a sequence of proofs where each proof references the previous one. \\
+This structure preserves the temporal order of signatures, which is important when the order of attestation matters—e.g., hierarchical approval workflows.
+\medskip
+
+\noindent
+Each proof includes a \texttt{previousProof} field referring to the identifier of
+the proof it builds upon.
+
+\begin{verbatim}
+"proof": [
+  {
+    "id": "urn:uuid:proof-1",
+    "type": "DataIntegrityProof",
+    "verificationMethod": "did:example:issuer1#key-1",
+    "created": "2025-10-18T12:00:00Z",
+    "proofValue": "zInitialProof"
+  },
+  {
+    "type": "DataIntegrityProof",
+    "verificationMethod": "did:example:issuer2#key-4",
+    "created": "2025-10-18T12:10:00Z",
+    "previousProof": "urn:uuid:proof-1",
+    "proofValue": "zFollowUpProof"
+  }
+]
+\end{verbatim}
+
+\paragraph{Extended Proof Fields.}
+VC proofs may contain additional properties beyond the minimal ones:
+\begin{itemize}
+    \item \textbf{id:} optional identifier for referencing the proof (useful in chains).
+    \item \textbf{expires:} expiry time of the proof itself.
+    \item \textbf{challenge:} — value provided by the verifier to prevent replay attacks.
+    \item \textbf{nonce:} — holder-generated randomness, often used for privacy.
+    \item \textbf{previousProof:} — reference to the earlier proof in a proof chain.
+\end{itemize}
+
+\begin{verbatim}
+"proof": {
+  "type": "DataIntegrityProof",
+  "cryptosuite": "eddsa-jcs-2022",
+  "created": "2025-10-18T12:30:00Z",
+  "expires": "2025-10-18T12:45:00Z",
+  "challenge": "zRandomVerifierChallenge",
+  "nonce": "zHolderGeneratedNonce",
+  "verificationMethod": "did:example:issuer123#key-1",
+  "proofPurpose": "assertionMethod",
+  "proofValue": "zSignatureValue"
+}
+\end{verbatim}
+
+\paragraph{Use and Semantics.}
+Multiple proof models enable:
+\begin{itemize}
+    \item multi-party attestation (multiple issuers),
+    \item ordered approval flows (sign-after-sign),
+    \item stronger integrity protection (each chain proof covers previous ones),
+    \item replay-attack protection via challenges and nonces.
+\end{itemize}
+
+
+\noindent
+Although DIDs are not exchanged directly between holder and verifier, every VC contains the holder’s DID inside \texttt{credentialSubject.id}, allowing the verifier to retrieve the correct public key from the holder’s DID Document.  \\
+This ensures that proofs and verifiable presentations can be validated in a p2p SSI model.
+
+\subsubsection {Trust Model}
+
+The trust model behind the three-party interaction relies on the properties of verifiable credentials and verifiable presentations.\\  
+The issuer creates and signs the verifiable credential, ensuring that the
+credential is authentic and has not been tampered with during transmission or storage. \\
+Holders and verifiers operate under the assumption that the credential received from the issuer is correct, provided that all cryptographic checks pass.
+\medskip
+
+\noindent
+All entities in the ecosystem expect the VDR to be \textit{tamper-evident}. \\
+Even if the VDR does not guarantee immutability, any modification to identifiers, schemas, or status lists must be detectable.
+\medskip
+
+\noindent
+Furthermore, holders and verifiers expect the issuer to stand behind the claims included in the credential and to revoke the credential promptly when needed, allowing verifiers to check the status during authentication.
+
+\subsubsection*{Implicit Trust and Root of Trust}
+
+Implicit trust means that a holder or verifier trusts the issuer’s claims because of a pre-existing trust relationship. \\
+This relationship is not mandated by the specification: implementations are free to decide how and why an issuer is trusted.
+\medskip
+
+\noindent
+From an implementation point of view, implicit trust requires knowing the
+issuer’s well-known DID.\\
+This DID becomes the \textbf{root of trust} for verifying the credential, since it allows the verifier to retrieve the issuer’s DID Document and the associated public keys used to sign the credential.
+\medskip
+
+\noindent
+Secure storage of these trusted DID is essential for both holders and verifiers.
+
+\subsubsection*{Selecting Which Issuers to Trust}
+
+The specification does not define a universal mechanism for determining which
+issuers should be trusted.  
+Different ecosystems adopt different strategies, including:
+
+\begin{itemize}
+    \item \textbf{Well-known organizations}, such as universities or government agencies,
+    whose reputation provides a natural basis for trust.
+    \item \textbf{Community-based trust}, where members of a closed ecosystem trust each
+    other due to established membership rules.
+    \item \textbf{Trusted service providers}, which maintain trusted lists or rank issuers.
+    \item \textbf{Social trust}, where individuals rely on recommendations—similar to how
+    users trust services because their peers do.
+\end{itemize}
+
+\noindent
+Multiple strategies can coexist, and real deployments often combine them.
+
+\medskip
+
+\subsubsection*{Extensibility of the Data Model}
+
+The VC data model supports \textbf{permissionless innovation}.  
+Issuers may extend the model in two main ways:
+
+\paragraph{Extending Vocabularies.}
+Issuers can introduce new terms for describing attributes of the credential
+subject.  
+To do so, they define a new JSON-LD context that contains the vocabulary
+extensions and make it publicly accessible.
+
+\begin{verbatim}
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://example.org/credentials/mycontext.json"
+  ],
+  "credentialSubject": {
+    "id": "did:example:123",
+    "newTerm": "Custom value"
+  }
+}
+\end{verbatim}
+
+\noindent
+This mechanism ensures that verifiers can interpret the meaning of new
+properties by consulting the corresponding context.
+
+\paragraph{Extending Cryptographic Suites.} 
+The specification allows the use of multiple cryptographic suites. \\
+Implementations may choose traditional algorithms (e.g., EdDSA, ECDSA) or
+post-quantum algorithms when needed.\\
+If a new cryptosuite is designed, implementers can propose it to W3C for
+standardization.
+\medskip
+
+\noindent
+This flexibility ensures that verifiable credentials remain adaptable to future security requirements and evolving ecosystem needs.
+
+
+\subsubsection*{Authorization (Out of Scope)}
+
+After authentication the claims inside the \texttt{credentialSubject} are typically employed for authorization. \\
+The VC specification does not define authorization rules; applications may adopt role-based or attribute-based access control depending on their requirements.
+
+\subsection {Verifiable Presentations (VP)}
+A \textbf{Verifiable Presentation (VP)} is a data structure created and signed by
+a holder to present one or more Verifiable Credentials (VCs) to a verifier.
+A VP may include:
+\begin{itemize}
+    \item one or multiple VCs,
+    \item additional optional data,
+    \item a short-lived proof, bound to a challenge provided by the verifier.
+\end{itemize}
+VPs are typically generated ``on the fly'' during an authentication process,
+ensuring freshness and preventing replay attacks.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\linewidth]{./images/section_5/vp_structure.png}
+    \caption{Structure of a Verifiable Presentation.}
+\end{figure}
+
+\subsubsection*{Basic Components: Type}
+
+The \texttt{type} property of a VP always contains the value
+\texttt{"VerifiablePresentation"}.  
+Additional presentation-specific types may be included depending on the
+application context.
+
+\begin{verbatim}
+{
+  "@context": ["https://www.w3.org/ns/credentials/v2"],
+  "type": ["VerifiablePresentation", "ThisPresentation"]
+}
+\end{verbatim}
+
+\subsubsection*{Basic Components: Holder}
+
+The \texttt{holder} property identifies the entity creating and signing the
+presentation.  
+It is usually expressed as a DID:
+
+\begin{verbatim}
+"holder": "did:method:method_specific_id_holder"
+\end{verbatim}
+
+In self-asserted presentations, the holder may also issue the enclosed VC.
+
+\subsubsection*{Basic Components: Verifiable Credential}
+
+A VP must embed the \emph{entire} VC being presented.  
+Extracting or copying partial data would break the cryptographic proof of the
+original credential.
+
+\begin{verbatim}
+"verifiableCredential": [
+  { ... VC ... }
+]
+\end{verbatim}
+
+\subsubsection*{Basic Components: Proof}
+
+The proof of a VP is similar to the proof of a VC but is created by the \emph{holder}
+instead of the issuer.  
+It ensures that the presentation is fresh and legitimately produced by the entity
+controlling the holder's private key.
+
+A VP proof includes:
+\begin{itemize}
+    \item the proof type (e.g.\ Data Integrity Proof),
+    \item the cryptographic suite used,
+    \item the creation timestamp,
+    \item the verification method (a reference to the holder’s public key),
+    \item the proof purpose,
+    \item the actual proof value.
+\end{itemize}
+
+\begin{verbatim}
+"proof": {
+  "type": "DataIntegrityProof",
+  "cryptosuite": " ... ",
+  "created": "2025-10-18T11:12:23Z",
+  "verificationMethod": "did:method:holder_key",
+  "proofPurpose": "authentication",
+  "proofValue": " ... "
+}
+\end{verbatim}
+
+\subsubsection*{VP Properties}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{p{3cm} p{10cm}}
+\toprule
+\textbf{Property} & \textbf{Description} \\
+\midrule
+\texttt{id} & Optional unique identifier for the VP. \\
+\texttt{type} & Must include ``VerifiablePresentation''. Additional types depend on the application. \\
+\texttt{VC} & One or more embedded VCs. \\
+\texttt{holder} & DID or URL identifying the holder presenting the VP. \\
+\texttt{proof} & Holder's Data Integrity Proof, used for authentication and freshness. \\
+\bottomrule
+\end{tabular}
+\caption{Main properties of a Verifiable Presentation.}
+\end{table}
+
+
+\noindent
+VPs are typically short-lived.\\
+A verifier sends a nonce (challenge) to the holder, which must be included in the proof. \\
+This prevents replay attacks and ensures that each presentation is fresh.
+
+\subsubsection*{Self-Asserted Presentations}
+
+A holder may generate a VP containing a \emph{self-asserted} VC—i.e.\ a credential not
+signed by an issuer.  
+Although less trustworthy, this is valid in scenarios where the verifier only
+needs information provided directly by the holder.
+
+\subsubsection*{Enveloped Verifiable Credentials}
+
+A VP may embed a VC in a compact JOSE/JWT representation, referred to as an
+\textit{Enveloped Verifiable Credential}.  
+This is useful in systems adopting JOSE-based security layers (e.g.\ JSON Web Token,
+JSON Web Encryption).
+
+\begin{verbatim}
+{
+  "type": ["VerifiablePresentation", "DegreePresentation"],
+  "verifiableCredential": [{
+     "@context": ["https://www.w3.org/ns/credentials/v2"],
+     "id": "data:application/vc+jwt,...",
+     "type": "EnvelopedVerifiableCredential"
+  }]
+}
+\end{verbatim}
+
+
+
+
+
+\subsubsection{VC security and Privacy Considerations}
