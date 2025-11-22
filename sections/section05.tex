@@ -597,10 +597,9 @@ original credential.
 \subsubsection*{Basic Components: Proof}
 
 The proof of a VP is similar to the proof of a VC but is created by the \emph{holder}
-instead of the issuer.  
+instead of the issuer. \\
 It ensures that the presentation is fresh and legitimately produced by the entity
-controlling the holder's private key.
-
+controlling the holder's private key.\\
 A VP proof includes:
 \begin{itemize}
     \item the proof type (e.g.\ Data Integrity Proof),
@@ -675,4 +674,552 @@ JSON Web Encryption).
 
 
 
-\subsubsection{VC security and Privacy Considerations}
+\subsubsection{VC security Considerations}
+
+The W3C Verifiable Credential ecosystem leaves implementers significant
+freedom.\\
+This flexibility is powerful, but it also introduces potential risks.\\  
+The specification therefore includes several security considerations that
+developers must evaluate carefully when designing issuers, holders and verifiers.
+
+\vspace{0.4cm}
+\subsubsection*{Cryptographic Suites and Libraries}
+
+Implementations rely on cryptographic suites (EdDSA, ECDSA, BBS, ML-DSA,
+etc.) and on third-party libraries. \\ 
+Developers must:
+\begin{itemize}
+    \item understand the security properties and limitations of the selected suite,
+    \item regularly monitor vulnerabilities and apply updates,
+    \item evaluate the impact of cryptographic failures on already-issued VCs.
+\end{itemize}
+
+\noindent
+If a cryptographic weakness is discovered, issuers may need to \textbf{revoke} or
+\textbf{reissue} credentials.  
+This highlights the essential role of a robust revocation mechanism.
+
+\vspace{0.4cm}
+\subsubsection*{Key Management}
+
+The security of the entire SSI ecosystem depends on correct key management.  
+Issuers and holders must:
+\begin{itemize}
+    \item generate keys using secure and standards-compliant methods,
+    \item rotate signing keys periodically,
+    \item store private keys securely (preferably in hardware),
+    \item protect keys from extraction or misuse.
+\end{itemize}
+
+Weak key management compromises all signatures, and therefore the integrity of
+VCs, VPs and DID Documents.
+
+\vspace{0.4cm}
+\subsubsection*{Content Integrity of External Resources}
+
+A credential may reference external resources (such as URLs).\\
+Since these resources may change, implementers must ensure integrity by:
+\begin{itemize}
+    \item hashing external resources and including the hash in the VC,
+    \item using \texttt{relatedResource} or similar mechanisms,
+    \item protecting referenced resources against unauthorized modifications.
+\end{itemize}
+
+\noindent
+Otherwise, a verifier may validate the signature but rely on altered or malicious external data.
+
+\vspace{0.4cm}
+\subsubsection*{Unsigned Claims}
+
+Self-asserted VCs or bearer-style credentials are allowed by the data model.
+However:
+\begin{itemize}
+    \item only issuer-signed credentials are \textbf{verifiable},
+    \item verifiers must interpret unsigned claims cautiously,
+    \item authorization decisions should never rely solely on self-asserted data.
+\end{itemize}
+
+\noindent
+The freedom to create arbitrary credential types must be balanced with security and authorization requirements.
+
+\vspace{0.4cm}
+\subsubsection*{Man-in-the-Middle, Replay, and Cloning Attacks}
+
+SSI operates at the application layer, so secure communication channels are mandatory. \\
+Interactions among holder, issuer and verifier must occur over:
+\begin{itemize}
+    \item TLS~1.3 secure channels (for confidentiality and authenticity)
+    \item authenticated endpoints
+    \item short-lived VPs bound to a challenge
+\end{itemize}
+
+\noindent
+Replay attacks are mitigated using:
+\begin{itemize}
+    \item a \textbf{challenge} (nonce) provided by the verifier
+    \item a validity period inside the VP proof
+\end{itemize}
+
+\noindent
+Cloning is mitigated by securely storing VCs in the wallet and avoiding storage of previously generated presentations.
+
+\vspace{0.4cm}
+\subsubsection*{Bundling Dependent Claims}
+
+Holders may combine multiple VCs inside a single VP.  
+Issuers must therefore prevent “semantic recombination attacks”.
+
+\noindent
+Example:  
+A university issues:
+\begin{itemize}
+    \item a VC stating the subject is a staff member in \textit{Computing},
+    \item a VC stating the subject is a postgraduate student in \textit{Cyber}.
+\end{itemize}
+
+\noindent
+A malicious holder could combine them to claim “staff in Economics”.\\
+Mitigation:
+\begin{itemize}
+    \item encode roles in a single VC,
+    \item ensure claim combinations cannot alter semantics or authorization.
+\end{itemize}
+
+\vspace{0.4cm}
+\subsubsection*{Highly Dynamic Information}
+
+Some claims change frequently (e.g.\ temporary roles, subscription status). \\
+For such claims:
+\begin{itemize}
+    \item the issuer must set short validity periods,
+    \item the verifier must check expiration and revocation,
+    \item long-lived credentials should be avoided.
+\end{itemize}
+
+\noindent
+Static properties (e.g.\ academic degrees) can instead be long-lived.
+
+\vspace{0.4cm}
+\subsubsection*{Device Theft and Impersonation}
+
+Wallets must enforce strong local authentication:
+\begin{itemize}
+    \item biometrics,
+    \item PINs or passphrases,
+    \item hardware-backed secure storage.
+\end{itemize}
+
+If a device is compromised and VCs are not protected, attackers may impersonate
+the legitimate holder.
+
+\vspace{0.4cm}
+\subsubsection*{Acceptable Use}
+
+Issuers may specify a \texttt{termsOfUse} property to constrain how a credential may
+be used.  
+Verifiers must check:
+\begin{itemize}
+    \item whether the VC is used for its intended purpose,
+    \item whether terms of use restrict its validity in the current context.
+\end{itemize}
+
+Ignoring these constraints may cause authorization errors or misuse.
+
+\vspace{0.4cm}
+\subsubsection*{Code Injection}
+
+Credential Subjects must never contain executable code or scripts.  
+All claims must be treated as untrusted input:
+\begin{itemize}
+    \item only JSON data should be allowed
+    \item no HTML, JavaScript or scripting languages
+\end{itemize}
+
+\noindent
+Improper sanitization can lead to code execution, HTML injection or storage attacks.
+\vspace{2 cm}
+\subsubsection{VC Privacy Considerations}
+
+\noindent
+Privacy considerations are a fundamental dimension of the SSI and Verifiable Credential framework.
+\medskip
+
+\noindent
+Different types of information offer different degrees of privacy:
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{./images/section_5/privacy_consideration.png}
+    \caption{Privacy spectrum: from highly correlatable identifiers to non-correlatable pseudonymous attributes.}
+\end{figure}
+
+
+\begin{itemize}
+    \item \textbf{Highly correlatable identifiers (global IDs)}  government IDs, card numbers, shipping addresses. \\
+    These enable long-term behavioral tracking and provide the least privacy.
+
+    \item \textbf{Correlatable via collusion (PII)} such as name, birthdate, zipcode.  \\
+    These can be linked by multiple verifiers or by collusion between verifier and issuer.
+
+    \item \textbf{Non-correlatable attributes (pseudonyms)}  e.g., ``is over 21''.  \\
+    These reveal only what is strictly needed and avoid unnecessary profiling.
+\end{itemize}
+
+\subsubsection *{User Privacy and Trust in Agents}
+
+\noindent
+The privacy guarantees of the VC ecosystem depend heavily on the behavior of the software agents involved:
+
+\begin{itemize}
+    \item \textbf{Issuers} must verify identity accurately but should avoid storing unnecessary
+    personal information once the credential is issued.
+    \item \textbf{Verifiers} are expected to validate VCs correctly and not retain identity data
+    unless strictly necessary.
+    \item \textbf{Wallets} must protect credentials at rest and ensure that only the information
+    explicitly selected by the user is disclosed.
+\end{itemize}
+
+\noindent
+SSI is built on the expectation that agents operate in the user’s best interest: the holder retains control over what to share, when, and with whom.
+
+\subsubsection *{Data Minimization and Selective Disclosure}
+
+Data minimization is the core privacy-preserving principle of SSI:
+the issuer should embed only the attributes required for the intended purpose.
+\medskip
+
+\noindent
+When multiple properties must coexist in a single credential, modern VC formats enable \textbf{selective disclosure}:\\
+the holder can choose which attributes to reveal and which to hide, avoiding unnecessary correlation while still satisfying verifier requirements.
+
+\begin{quotation}
+  \textit{This particular aspect was underlined by the Vesco, since in his point of view, it is a most important feature to understanding about VC privacy}
+\end{quotation}
+
+\subsubsection *{Personally Identifiable Information}
+
+Whenever possible, PII should be avoided in the \texttt{credentialSubject}.\\
+Instead of disclosing a full birthdate, an ``age-over-18'' claim is preferable.
+\medskip
+
+\noindent
+Sensitive data must be protected:
+
+\begin{itemize}
+    \item \textbf{in transit} using secure channels (TLS~1.3),
+    \item \textbf{at rest} using secure storage in wallets or hardware-backed key stores.
+\end{itemize}
+
+\subsubsection *{Correlation Surfaces}
+
+Correlation can arise from multiple sources:
+
+\begin{itemize}
+    \item \textbf{Identifiers} credential IDs, DIDs, pairwise vs.\ static identifiers.
+    \item \textbf{Metadata} timestamps used with high granularity may reveal usage patterns.
+    \item \textbf{Signatures} reused signatures allow linking of multiple presentations.
+\end{itemize}
+
+\noindent
+Using new nonces and proof regeneration reduces correlation risk.
+
+\subsubsection *{Device Tracking and Fingerprinting}
+
+Even when VC data is minimal, other layers of the technology stack can leak identity:
+
+\begin{itemize}
+    \item IP address and network-layer identifiers,
+    \item GPS/Galileo location data,
+    \item browser/device fingerprinting.
+\end{itemize}
+
+\noindent
+Privacy must therefore be considered holistically, not just within the VC layer
+
+\subsubsection *{Issuer and Verifier Behavior}
+
+The specification emphasizes:
+
+\begin{itemize}
+    \item Issuers must not store unnecessary personal data.
+    \item Verifiers must request only the information strictly required.
+    \item Wallets must prevent disclosure to unintended parties.
+\end{itemize}
+
+\noindent
+This reduces liability and prevents data mining or replay by malicious entities.
+
+\subsubsection *{Bearer Credentials}
+
+Bearer credentials (``credenziali al portatore'') may be used in low-risk cases, but:
+
+\begin{itemize}
+    \item they are not verifiable,
+    \item they lack binding to a DID,
+    \item they reduce the verifier’s ability to authenticate the subject.
+\end{itemize}
+
+\noindent
+They should not be used for sensitive or security-critical applications.
+
+\subsubsection *{Correlation during Validation}
+
+Third-party services used during verification may observe validation patterns and thus deanonymize users if not designed correctly
+
+\subsubsection *{Storage Provider and Data Mining Risks}
+
+Cloud-based wallets or backup services may create large honeypots of personal data.\\
+Local storage with secure hardware support is generally preferable.
+
+\subsubsection *{Credential Aggregation}
+
+Combining multiple VCs in the same presentation may unintentionally reveal more information than each VC independently. Issuers should design credentials to minimize this risk and avoid roles or attributes that can be recombined in misleading ways.
+
+\subsubsection *{Patterns of Use and Frequency of Issuance}
+
+Repeated presentation of the same credential also enables tracking.\\
+For privacy-critical scenarios, the specification encourages:
+
+\begin{itemize}
+    \item \textbf{single-use credentials},
+    \item or frequently refreshed proofs.
+\end{itemize}
+
+\noindent
+The trade-off is higher issuer workload.
+
+\subsubsection *{Issuer Cooperation and Signature Design}
+
+Issuers should adopt cryptographic suites that avoid deterministic signatures, reducing correlation caused by identical proof values across presentations.
+
+\subsubsection *{Legal Processes and Mis-Sharing}
+
+Users must be informed of situations in which identity data may be disclosed to law enforcement.\\
+Wallets must warn users before sharing information with an untrusted verifier
+
+
+\subsection{ VC and VP Exchange Protocol}
+
+\subsubsection *{Verifiable Credential (VC) Issuance Logical Steps}
+
+Given a Holder willing to obtain a Verifiable Credential, the Issuer performs the following steps:
+
+\begin{enumerate}
+    \item \textbf{Collect identity information} from the subject  
+    (e.g.\ DID and additional attributes required by the Issuer).
+    
+    \item \textbf{Verify the identity information} and derive the \emph{claims} that will
+    be asserted in the credential subject.
+    
+    \item \textbf{Verify proof of possession} of the private key corresponding to the
+    Holder's DID (challenge–response).
+    
+    \item \textbf{Generate the credential} and associate it with the Holder's DID.
+    
+    \item \textbf{Sign the credential}, producing a \emph{Verifiable Credential}.
+    
+    \item \textbf{Update status information}  
+    (e.g.\ assign a position in the Status List Bitstring and mark it as valid).
+    
+    \item \textbf{Issue the VC to the Holder}.
+\end{enumerate}
+
+\noindent
+Before these steps take place, the Issuer is expected to:
+\begin{itemize}
+    \item maintain its own DID, DID Document and keys on the chosen VDR;
+    \item publish the \textbf{VC schema} on the VDR;
+    \item maintain a \textbf{revocation mechanism} (e.g.\ status list).
+\end{itemize}
+
+\vspace{0.5cm}
+
+\subsubsection *{Verifiable Presentation (VP) Verification Logical Steps}
+
+Given a Holder presenting a Verifiable Presentation (VP), the Verifier executes:
+
+\begin{enumerate}
+    \item \textbf{Retrieve the Holder's DID} from the VP.
+    
+    \item \textbf{Resolve the Holder's DID} using the appropriate DID method to obtain the
+    Holder’s DID Document and public key.
+    
+    \item \textbf{Verify the VP proof} using the Holder's public key.
+    
+    \item \textbf{Verify the challenge} embedded in the VP  
+    (freshness check to prevent replay attacks).
+    
+    \item \textbf{Extract the embedded VC(s)} from the VP.
+    
+    \item \textbf{Retrieve the Issuer DID} from each VC.
+    
+    \item \textbf{Resolve the Issuer DID} and obtain the Issuer's verification method.
+    
+    \item \textbf{Verify the VC proof} using the Issuer’s public key.
+    
+    \item \textbf{Validate VC metadata} (validity period, issuance time, expiration, ecc...).
+    
+    \item \textbf{Check the status of the VC}  
+    (e.g.\ using the Status List Bitstring to determine whether it has been revoked).
+    
+    \item \textbf{Extract the credentialSubject} and apply the authorization logic.
+\end{enumerate}
+
+\noindent
+These logical flows involve \textbf{all layers} of the SSI framework: DID resolution, integrity verification, status checking, and finally authorization based on the claims contained in the credential subject.
+
+\newpage
+\noindent
+Now we have the able to interact and exchange VC and VP among the three main actors of the SSI ecosystem: Issuer, Holder and Verifier.\\
+We simple can use different standards and protocols to perform these interactions, such as:
+\begin{itemize}
+    \item \textbf{OpenID Connect (OIDC)}     
+    \item \textbf{Credential Exchange Protocols} such as the W3C Credential Exchange Protocol, which defines a framework for exchanging verifiable credentials between issuers, holders, and verifiers. It outlines message formats, workflows, and security considerations for credential exchange.
+\end{itemize}
+
+\subsubsection {OpenID Connect (OIDC)}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.85\linewidth]{./images/section_5/OIDC.png}
+    \caption{OIDC specifications for VC Issuance and VP Presentation}
+\end{figure}
+
+\noindent
+OIDC defines two main protocols that enable interoperability in
+the exchange of Verifiable Credentials (VCs) and Verifiable resentations (VPs):
+\begin{itemize}
+    \item \textbf{OpenID for Verifiable Credential Issuance (OIDC4VCI)}, used by a Holder to request and obtain a VC from an Issuer.
+    \item \textbf{OpenID for Verifiable Presentations (OIDC4VP)}, used by a Holder to present a VP to a Verifier.
+\end{itemize}
+
+\noindent
+These specifications define a uniform API that supports \textbf{any VC format and any cryptographic suite}. No credential–specific customization is required.
+
+\bigskip
+
+\noindent
+OIDC4VCI introduces a set of endpoints used during the interaction between Holder and Issuer:
+
+\begin{itemize}
+    \item \textbf{Credential Endpoint (mandatory)}  
+    The endpoint where one or multiple VCs of the same format are issued.
+
+    \item \textbf{Nonce Endpoint (optional)}  
+    Provides a fresh nonce used in \textit{proof of possession} of the key material.  
+    Even if the specification avoids the term “DID”, the meaning is the same:  
+    a Holder must prove control of the private key behind its identifier before the Issuer binds the VC to that identifier.
+
+    \item \textbf{Deferred Credential Endpoint (optional)}  
+    Allows delayed delivery of a VC.  
+    Useful when the Issuer needs extra time for verification or when facing a high issuance load.
+\end{itemize}
+
+\subsubsection *{Mechanisms}
+
+The specification defines several mechanisms supporting the issuance flow:
+
+\begin{itemize}
+    \item \textbf{Credential Offer}  
+    The Issuer advertises which VC types can be issued, allowing the wallet to start the flow.
+
+    \item \textbf{Status Notification (optional)}  
+    Allows the wallet to learn whether a VC has been revoked or is no longer valid.
+
+    \item \textbf{Metadata Publication (optional)}  
+    The Issuer may publish schemas and VC metadata, typically on a Verifiable Data Registry.
+\end{itemize}
+
+\subsubsection *{Issuance Flows}
+
+OIDC4VCI supports multiple issuance patterns, depending on the use case:
+
+\begin{itemize}
+    \item \textbf{Authorization Code Flow}  
+    The Issuer obtains end-user information through authentication and consent inside the issuance flow.
+
+    \item \textbf{Pre-Authorized Code Flow}  
+    User authorization happens out-of-band.  
+    The Holder is already authorized when contacting the Credential Endpoint.
+
+    \item \textbf{Wallet-Initiated or Issuer-Initiated}  
+    The flow may start directly from the wallet, or from an Issuer invitation (e.g., email, QR code).
+
+    \item \textbf{Same-Device Offer}  
+    The credential offer is received on the same device where the wallet runs.
+
+    \item \textbf{Cross-Device Offer}  
+    The offer is received on a different device and then transferred to the wallet.
+
+    \item \textbf{Immediate or Deferred Issuance}  
+    Depending on whether the Deferred Credential Endpoint is used.
+\end{itemize}
+
+\subsubsection{Authorization Code Flow}
+
+This section summarizes the Authorization Code Flow as presented during the lecture.  
+The specification introduces a distinction between the \emph{End-User} and the \emph{Wallet}, 
+which together constitute the Holder in the SSI trust model.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\linewidth]{./images/section_5/OIDC4VCI_Flow.png}
+    \caption{OIDC4VCI Authorization Code Flow for VC Issuance}
+\end{figure}
+
+\paragraph{(1) Flow Initiation} ~
+
+\noindent
+\textbf{(1a) Wallet-initiated.}\\
+The End-User selects the desired Credential in the Wallet, which initiates the issuance flow by contacting the Issuer.
+\medskip
+
+\noindent
+\textbf{(1b) Issuer-initiated.}  
+The Issuer generates a Verifiable Credential Offer (e.g.\ QR code, URI) and sends it to the Wallet.  
+Upon receiving the offer, the Wallet begins the flow.
+
+\paragraph{(2) Fetching Issuer Metadata} ~
+
+\noindent
+The Wallet retrieves the Issuer Metadata from the Credential Issuer URL.\\ 
+This metadata specifies:
+\begin{itemize}
+    \item supported credential types and formats,
+    \item the Authorization Endpoint,
+    \item the Credential Endpoint.
+\end{itemize}
+\noindent
+These are required to correctly initiate the issuance process.
+
+\paragraph{(3) Authorization Request} ~
+
+\noindent
+The Wallet sends an Authorization Request to the Authorization Endpoint.\\ 
+This step typically involves:
+\begin{itemize}
+    \item End-User authentication,
+    \item explicit user consent.
+\end{itemize}
+
+\paragraph{(4) Authorization Response} ~
+
+\noindent
+The Authorization Server processes the request and returns an \emph{Authorization Code}.\\
+This code is required to obtain an Access Token.
+
+\paragraph{(5) Token Request} ~
+
+\noindent
+The Wallet sends a Token Request to the Token Endpoint, including the Authorization Code.\\
+After validation, the endpoint returns an \emph{Access Token}.
+
+\paragraph{(6) Credential Request and Issuance} ~
+
+\noindent
+Using the Access Token, the Wallet sends a Credential Request to the Credential Endpoint, including the proof(s) of possession of the private key associated with the Holder's DID.\\
+The Issuer then returns:
+\begin{itemize}
+    \item the Verifiable Credential (immediate issuance), or
+    \item a Transaction ID + time interval, requiring a Deferred Credential Request.
+\end{itemize}
