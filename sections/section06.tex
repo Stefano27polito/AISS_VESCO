@@ -1,0 +1,187 @@
+\section{SSI for IoT Devices}
+
+\subsubsection*{IoT Use Case and Decentralization in SSI}
+
+This section describes how Self-Sovereign Identity (SSI) can be implemented in
+IoT ecosystems, how embedded wallets operate inside constrained devices, and why
+the SSI model is inherently decentralized. The focus is on identity anchoring,
+device–issuer verification models, and implications for key management.
+
+\paragraph{IoT Devices and Embedded Wallets}
+In IoT systems, unlike user-centric web scenarios, no human interacts directly
+with a wallet UI. \\
+The SSI model must therefore be implemented in software running on the device,
+as an \textit{embedded wallet}.  \\
+This component handles:
+\begin{itemize}
+    \item key generation and storage,
+    \item DID creation and DID Document publication,
+    \item verifiable credential management (issuance, refresh, rotation),
+    \item interaction with issuers and verifiers,
+    \item secure signing of presentations.
+\end{itemize}
+
+\noindent
+IoT deployments considered here operate in a \textbf{closed world} under a
+single administrator, contrary to open web environments.\\
+TLS is still used to create secure channels, typically with server-side X.509
+authentication; SSI is used on top for client authentication at application
+layer.
+
+
+\paragraph{Combining TLS and SSI}
+Even in IoT, the device must usually authenticate the server via TLS, using
+traditional X.509 certificates.\\  
+Client authentication can then occur through verifiable presentations.  
+This results in a combination of two identity technologies:
+\begin{itemize}
+    \item TLS certificates for secure channel establishment,
+    \item SSI credentials for application-layer device identity.
+\end{itemize}
+
+\noindent
+However, in IoT scenarios the dependence on X.509 may be reduced, and SSI-based credentials can be used as certificate-like artifacts at lower layers of the stack. This reduces the overhead of certificate lifecycle management.
+
+\paragraph{Anchoring Identity in Hardware}
+When available, hardware secure elements such as TPMs or other Secure Elements (SE) can be used to generate and protect the device's key pair.\\ 
+The private key remains inside the hardware; the corresponding public key is ncoded in the DID Document and published through the DID method.
+\smallskip
+
+
+\noindent
+Using hardware strengthens:
+\begin{itemize}
+    \item key protection,
+    \item integrity of cryptographic operations,
+    \item resistance to device compromise.
+\end{itemize}
+
+\noindent
+The embedded wallet must be able to use the hardware keys for all VC- and
+VP-related signatures.
+
+\paragraph{Verification Approaches for Issuing Credentials}
+Before issuing a verifiable credential to an IoT device, the issuer must verify the device identity. Several approaches exist:
+\bigskip
+
+\noindent
+\textbf{1. Remote Attestation (correct approach).}  
+If a TPM is present, the issuer can perform remote attestation to verify:
+\begin{itemize}
+    \item device integrity,
+    \item software configuration,
+    \item the authenticity of the TPM,
+    \item the origin and residency of the key pair inside the TPM.
+\end{itemize}
+Once attestation succeeds, the issuer may safely issue a verifiable credential bound to the DID created by the device.
+\bigskip
+
+\noindent
+\textbf{2. Forcing key usage (incorrect approach).}  
+An administrator may want to \emph{force} devices to use keys stored in the secure element by verifying, through TPM attestation keys, that a given key was generated and resides inside the TPM.\\
+However, this creates a problem: the issuer must bind the VC to a DID method that prevents autonomous key rotation.
+\smallskip
+
+\noindent
+Two options appear:
+\begin{itemize}
+    \item DLT-based DID methods,
+    \item DID:key methods.
+\end{itemize}
+
+\noindent
+DLT methods allow the device to later update its DID Document with a new public key—thus bypassing the enforced hardware key.\\
+DID:key binds the credential directly to the current key, preventing rotation.
+\medskip
+
+\noindent
+Both approaches violate SSI principles, because:
+\begin{itemize}
+    \item the issuer ends up controlling which key the device must use,
+    \item the device loses the ability to rotate keys autonomously,
+    \item decentralization is broken.
+\end{itemize}
+
+\noindent
+Therefore, such enforcement is incompatible with SSI philosophy.
+
+\paragraph{Correct Interpretation of SSI Principles}
+SSI requires that:
+\begin{itemize}
+    \item the device controls the key pair,
+    \item the device selects the DID method,
+    \item issuers only validate identity facts, they do not mandate key usage,
+    \item the holder remains free to rotate keys at any time.
+\end{itemize}
+\medskip
+
+\noindent
+Any issuer-side policy that forces a device to use one specific key (e.g., a TPM key) breaks the decentralized architecture.
+
+\paragraph{Alternative Hardware Anchoring: PUFs}
+Besides TPMs, identity can be anchored using \textbf{Physical Unclonable
+Functions (PUFs)}.\\
+A PUF extracts unique hardware characteristics of the board to derive keys that:
+\begin{itemize}
+    \item cannot be cloned,
+    \item cannot be transplanted to another device,
+    \item inherently bind identity to physical hardware.
+\end{itemize}
+\medskip
+
+\noindent
+This offers an alternative way to build strong IoT identities without storing long-term secrets in software.
+
+\paragraph{People-to-People and People-to-Things Interactions}
+Once SSI is implemented correctly, any entity—human or device—can interact with any other peer in the ecosystem.\\
+Interoperability is guaranteed by the standardization of:
+\begin{itemize}
+    \item DID methods,
+    \item Verifiable Credential data models,
+    \item OpenID for Verifiable Credential Issuance (OIDC4VCI),
+    \item OpenID for Verifiable Presentations (OIDC4VP).
+\end{itemize}
+\medskip
+
+\noindent
+Thus, verifiers and holders can be humans, servers, services, or embedded devices.
+
+\paragraph{Why SSI Is Decentralized}
+SSI is decentralized because:
+\begin{itemize}
+    \item No single authority controls all components of identity.
+    \item The holder generates and manages its own key pair.
+    \item The holder selects the DID method and controls the DID.
+    \item Issuers only provide verifiable credentials, not the identity itself.
+    \item No entity can fully revoke another peer's identity.
+\end{itemize}
+
+For example:
+\begin{itemize}
+    \item The issuer can revoke only the credential it issued.
+    \item The holder can revoke its DID at any time.
+    \item Key rotation is autonomous and does not require issuer intervention.
+\end{itemize}
+\smallskip
+
+\noindent
+This separation between:
+\[
+\text{public key (ledger)} \quad \text{and} \quad \text{identity attributes (VC)}
+\]
+is the fundamental design that enables decentralization.
+
+\paragraph{Advantages for Large-Scale Systems}
+The model simplifies identity lifecycle management:
+\begin{itemize}
+    \item Devices can rotate keys independently.
+    \item Devices can revoke their DID instantly.
+    \item No need for certificate revocation lists or CA-managed PKI.
+    \item Administrators perform fewer manual identity maintenance operations.
+\end{itemize}
+
+\noindent
+As a consequence, SSI reduces operational costs and scales better in large IoT deployments.
+
+
+

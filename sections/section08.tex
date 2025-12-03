@@ -1,0 +1,71 @@
+\section{Research Topics in SSI}
+
+The research focuses on:
+\begin{itemize}
+    \item the migration of verifiable credentials to post-quantum cryptography (PQC);
+    \item the integration of verifiable credentials within the TLS protocol; and
+    \item their use within IPsec.
+\end{itemize}
+
+\noindent
+The latter two are explored in the context of IoT deployments, where credentials are injected directly at lower communication layers to avoid combining traditional certificates and SSI mechanisms.
+
+\subsubsection*{Motivation for Post-Quantum Migration}
+Quantum computing is progressing quickly, and the probability that a cryptographically relevant quantum computer becomes available in the future is increasing.\\
+Since such systems can efficiently break much of today’s asymmetric cryptography, all identity models relying on standard public-key primitives require a migration strategy. While quantum computing promises major scientific benefits, it simultaneously creates a pressing need to protect Internet protocols and identity mechanisms against quantum adversaries. 
+\smallskip
+
+\noindent
+The migration to PQC involves two complementary efforts:
+\begin{itemize}
+    \item \textbf{Definition of PQC algorithms} by cryptographers, based on new hard mathematical problems believed to be resistant to quantum attacks. These schemes are promising but still recent, and their long-term robustness is not yet fully established.
+    \item \textbf{Integration of PQC into existing systems and protocols} by engineers. Since protocols and infrastructures cannot be redesigned from scratch, a major challenge is incorporating PQC primitives in a way that preserves compatibility, security, and deployment feasibility.
+\end{itemize}
+
+\subsubsection*{Engineering Challenges: Crypto Agility and Deployability}
+PQC integration must be performed without disrupting established systems and network operations.
+
+\paragraph*{Crypto Agility}
+Crypto agility refers to the ability to reconfigure software and protocols to plug in new cryptographic primitives without extensive refactoring.\\
+This requires:
+\begin{itemize}
+    \item identifying all protocol components relying on cryptography;
+    \item refactoring implementations to allow modular replacement of algorithms;
+    \item ensuring rapid updates if chosen PQC algorithms are later found vulnerable.
+\end{itemize}
+
+\paragraph*{Deployability}
+Deployability ensures that PQC-enhanced protocols remain aligned with existing network-management practices:
+\begin{itemize}
+    \item new mechanisms must support current operational workflows;
+    \item no disruptive changes should be introduced for operators and administrators;
+    \item standardisation bodies must converge on harmonised integration approaches.
+\end{itemize}
+
+\paragraph*{Hybrid Cryptographic Schemes}
+During the transition perio are considered. They provide a safety margin: even if a PQC algorithm is later broken, security remains at least as strong as with traditional cryptography. 
+\\
+Their adoption is still under debate, but they represent a pragmatic approach until pure PQC solutions are fully validated.
+
+\subsubsection*{PQC Algorithms Considered for SSI Migration}
+The practical work presented focuses on integrating NIST-selected PQC algorithms into the SSI ecosystem.
+
+\begin{itemize}
+    \item \textbf{Key agreement (not directly used in SSI operations):} ML-KEM, HQC.
+    \item \textbf{Digital signatures (critical for verifiable credentials):} ML-DSA, SLH-DSA, and Falcon.
+\end{itemize}
+
+\noindent
+Falcon, although selected by NIST, is less mature for deployment because its floating-point operations introduce potential side-channel vulnerabilities, particularly timing attacks.
+
+\subsubsection*{Use of Verifiable Credentials in TLS and IPsec}
+Two research prototypes demonstrate how verifiable credentials can be introduced as certificate types in:
+\begin{itemize}
+    \item the TLS handshake (layer 4.5), and
+    \item IPsec (layer 3).
+\end{itemize}
+
+\noindent
+The objective is to authenticate endpoints directly within the protocol using verifiable credentials, avoiding the need to first establish secure channels with traditional certificates and then perform higher-layer SSI authentication.\\ 
+This is especially relevant for IoT systems, where simplifying identity plumbing across layers can significantly reduce complexity.
+

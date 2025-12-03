@@ -1,0 +1,65 @@
+\section{Selective Disclosure}
+
+\subsection{Selective Disclosure in JWT-Based Verifiable Presentations}
+
+Selective disclosure in JSON Web Token (JWT)-encoded verifiable credentials enables data minimisation while preserving authentication guarantees. The holder can reveal only a subset of the claims originally issued, while verifiers still validate authenticity and integrity. \\
+This mechanism, currently specified in an IETF draft, relies on salted-hash–based commitments rather than zero-knowledge proofs.
+
+\subsubsection*{JWT Structure and Analogy with Verifiable Credentials}
+A JWT consists of three Base64URL-encoded components: header, payload, and signature.  
+\begin{itemize}
+    \item \textbf{Header}: token type and signature algorithm.
+    \item \textbf{Payload}: registered, public, and private claims (e.g., \texttt{iss}, \texttt{sub}, \texttt{aud}, \texttt{iat}, \texttt{nbf}, \texttt{exp}, \texttt{jti}).
+    \item \textbf{Signature}: integrity and authenticity protection using the issuer's private key.
+\end{itemize}
+This structure mirrors verifiable credentials: metadata (header), claims (payload), and issuer signature.
+
+\subsubsection*{Selective Disclosure JWT (SD-JWT)}
+Selective disclosure is achieved by replacing cleartext claims with salted digests:
+\begin{itemize}
+    \item The \textbf{issuer} places a hash of each selectively disclosable claim in the JWT payload.
+    \item The \textbf{holder} later discloses only selected claims in plaintext (each disclosure includes: salt, claim name, claim value).
+    \item The \textbf{verifier} recomputes the digest and checks it against the SD-JWT.
+\end{itemize}
+This approach supports minimal disclosure but is not zero-knowledge: plaintext claims must be transmitted at presentation time.
+
+\subsubsection*{Disclosure Mechanism}
+A disclosure has the form:
+\[
+    \text{Disclosure} = \{\text{salt}, \text{claim}, \text{value}\}
+\]
+and its digest is:
+\[
+    \text{digest} = \text{SHA-256}(\text{Base64}( \text{Disclosure}))
+\]
+The SD-JWT includes:
+\begin{itemize}
+    \item the issuer-signed JWT containing all salted digests;
+    \item zero or more disclosures, appended in compact serialization using \texttt{\textasciitilde} separators;
+    \item optional cleartext claims designated by the issuer.
+\end{itemize}
+
+\subsubsection*{Issuance and Presentation Flow}
+\begin{enumerate}
+    \item The issuer produces an SD-JWT containing salted digests and indicates which claims are disclosable.
+    \item The holder receives the SD-JWT plus all disclosures.
+    \item The holder selects which disclosures to reveal to each verifier.
+    \item The verifier:
+    \begin{itemize}
+        \item verifies the issuer signature over the SD-JWT,
+        \item recomputes digests for the disclosed claims,
+        \item checks that each digest appears in the SD-JWT,
+        \item validates the SD-JWT as a standard JWT.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Key Binding for Holder Consent}
+To prevent replay or theft of SD-JWTs, the draft defines a \textbf{key-binding JWT}:
+\begin{itemize}
+    \item The issuer embeds the holder’s public key in the SD-JWT (claim \texttt{cnf}).
+    \item The holder proves possession of the corresponding private key by signing a hash of the SD-JWT, along with a nonce and audience.
+    \item The verifier checks that the signature corresponds to the public key contained in the SD-JWT.
+\end{itemize}
+This binds the SD-JWT to a specific holder and ensures freshness and audience restriction.
+
+

@@ -1223,3 +1223,191 @@ The Issuer then returns:
     \item the Verifiable Credential (immediate issuance), or
     \item a Transaction ID + time interval, requiring a Deferred Credential Request.
 \end{itemize}
+
+\subsubsection{Pre-Authorized Code Flow}
+
+In this section, we describe the \textbf{Pre-Authorized Code Flow} defined in the OpenID for Verifiable Credential Issuance (OIDC4VCI) specification.\\
+Compared to the Authorization Code Flow, the main difference lies in the fact that the \textbf{issuer pre-generates a code} (the \emph{pre-authorized code}) and sends it to the Wallet, eliminating the need for a full end-user authentication phase inside the protocol.  
+\medskip  
+
+\noindent
+The actors involved are the same as before:
+\begin{itemize}
+    \item \textbf{End-User} – the subject of the credential,
+    \item \textbf{Wallet} – the component that stores keys and manages the VC lifecycle,
+    \item \textbf{Authorization Server} – responsible for issuing access tokens,
+    \item \textbf{Credential Issuer} – responsible for generating and signing VCs.
+\end{itemize}
+
+\noindent
+The following paragraphs summarize the flow as described during the lecture.
+
+\paragraph{(1) End-User provides information and consent}
+The flow begins with the End-User interacting with the Wallet and providing the information necessary for the issuance of the requested Verifiable Credential (VC).\\  
+The issuer is free to define its own business or verification process, as the protocol does not mandate how identity attributes must be collected. 
+\medskip 
+
+\noindent
+As always in SSI systems, \textbf{user consent} is explicitly required before any personal data or identity-related information is processed.
+
+
+\paragraph{(2) Issuer generates and sends a VC Offer (with Pre-Authorized Code)}
+The Credential Issuer generates a \textbf{VC Offer} and sends it to the Wallet.  
+The offer contains:
+\begin{itemize}
+    \item the \textbf{Credential Issuer URL} (used later to fetch metadata),
+    \item the \textbf{type} of the offered credential,
+    \item the \textbf{pre-authorized code}.
+\end{itemize}
+
+\noindent
+This represents the key difference from the previous flow:  
+\textbf{the Wallet already receives the pre-authorized code without needing to authenticate via the Authorization Endpoint}.
+
+\paragraph{(3) Wallet fetches Issuer Metadata}
+Using the URL from the VC Offer, the Wallet retrieves:
+\begin{itemize}
+    \item the list of VC types and supported formats,
+    \item the Token Endpoint URL,
+    \item the Credential Endpoint URL.
+\end{itemize}
+
+\noindent
+This step prepares the Wallet for the issuance request.
+
+\paragraph{(4) Wallet sends Token Request using the Pre-Authorized Code}
+The Wallet contacts the \textbf{Token Endpoint}, presenting:
+\begin{itemize}
+    \item the \textbf{pre-authorized code},
+    \item (if required) the \emph{transaction code}.
+\end{itemize}
+
+\noindent
+If the code is valid, the Authorization Server returns an \textbf{Access Token}. \\ 
+This token authorizes the Wallet to request the Verifiable Credential.
+
+
+\paragraph{(5) Wallet requests the VC (Access Token + Proof of Possession)}
+With the Access Token, the Wallet sends a \textbf{Credential Request} to the Issuer’s Credential Endpoint, which includes:
+\begin{itemize}
+    \item the \textbf{Access Token},
+    \item the \textbf{proof of possession} of the private key belonging to the DID included in the future credential.
+\end{itemize}
+
+\noindent
+The issuer validates:
+\begin{itemize}
+    \item the Access Token,
+    \item the proof of possession (ensuring the End-User controls the DID).
+\end{itemize}
+
+\noindent
+If successful, the issuer returns either:
+\begin{itemize}
+    \item the \textbf{issued VC} (immediate issuance), or
+    \item a \textbf{Transaction ID} to be used later at a Deferred Credential Endpoint (deferred issuance).
+\end{itemize}
+
+
+\subsubsection*{From Issuance to Presentation: Transition to OpenID for Verifiable Presentation}
+
+The specification for \textbf{OpenID for Verifiable Credential Issuance (OIDC4VCI)}
+defines a standardized protocol that enables interoperable issuance of Verifiable Credentials (VCs).\\ 
+It provides a common set of endpoints, metadata structures and message formats
+allowing any compliant \emph{wallet} and \emph{issuer} implementation to interact
+correctly and complete the full VC issuance flow.
+
+\paragraph{Flexibility in End-User Data Collection}
+A key aspect intentionally left unspecified concerns \textbf{how the issuer collects
+the identity data and evidence} required to construct the claims included in the Verifiable Credential. \\
+This step is fully delegated to implementers, since it depends heavily on the use case.
+
+\noindent
+Typical examples include:
+\begin{itemize}
+    \item verification of a physical identity document for a human subject;
+    \item remote attestation of a TPM-enabled IoT device before issuing a device credential;
+    \item validation of enrollment records before creating academic or employment credentials.
+\end{itemize}
+
+\noindent
+Only this preparatory phase remains open and customizable.  
+\textbf{All subsequent steps} (authorization, token acquisition, credential request, proof of key possession, and delivery of the issued credential) are instead \textbf{fully specified} by OIDC4VCI and follow strict interoperability rules.
+
+\paragraph{Transition to the Verification Side}
+Having analyzed the issuance side of the \emph{triangle of trust}, we now move to the verifier’s perspective. \\ 
+The complementary specification, \textbf{OpenID for Verifiable Presentation (OIDC4VP)}, defines the protocol and mechanisms for:
+\begin{itemize}
+    \item requesting a verifiable presentation from a holder;
+    \item generating a presentation that includes one or more VCs;
+    \item delivering the presentation to the verifier in a format-independent manner.
+\end{itemize}
+
+\noindent
+OIDC4VP ensures that any verifier can reliably request and validate presentations of Verifiable Credentials using a uniform, interoperable protocol.
+
+\bigskip
+
+\noindent
+Depending on the scenario, the verifier and the wallet may:
+\begin{itemize}
+    \item reside on the \emph{same device}
+    \item reside on \emph{different devices}
+\end{itemize}
+
+\paragraph{Same-Device Presentation Flow} ~
+
+\noindent
+\textbf{Step 1 – Authorization Request from Verifier to Wallet.}  
+The end user initiates an interaction with the verifier.  
+The verifier sends an \emph{authorization request} to the wallet, specifying the requirements for the Verifiable Credential(s) that must be presented. \\
+These requirements may include:
+\begin{itemize}
+    \item required VC type(s),
+    \item required credential format,
+    \item required individual claims (e.g., in selective-disclosure credentials).
+\end{itemize}
+\medskip
+
+\noindent
+\textbf{Step 2 – Wallet Processing and User Consent.}  
+The wallet evaluates which stored VCs satisfy the request.\\ 
+It authenticates the end user and gathers explicit consent to present the selected VC(s), in accordance with the privacy and user-centric principles of SSI.
+\bigskip
+
+\noindent
+\textbf{Step 3 – Presentation Creation and Response.}  
+The wallet constructs the Verifiable Presentation and returns it to the verifier in the \texttt{vp\_token} field of the authorization response.
+\vspace{1 cm}
+
+\paragraph{Cross-Device Presentation Flow} ~
+
+\noindent
+In this scenario, the verifier and the wallet operate on different physical devices.
+\medskip
+
+\noindent
+\textbf{Step 1 – Authorization Request with Request URI.}  
+The end user interacts with the verifier.\\
+The verifier sends to the wallet an \emph{authorization request} containing a \textbf{Request URI}, from which the wallet can retrieve the \emph{request object} holding the full presentation requirements.
+\bigskip
+
+\noindent
+\textbf{Step 2 – Wallet Retrieves the Request Object.}  
+The wallet contacts the Request URI and obtains the request object, which contains:
+\begin{itemize}
+    \item the requested VC type(s),
+    \item accepted formats,
+    \item required claims.
+\end{itemize}
+\medskip
+
+\noindent
+\textbf{Step 3 – Wallet Processing, Authentication and Consent.}  
+The wallet processes the request object, determines which VCs match the verifier’s requirements, and presents the options to the end user, who must authenticate and consent before proceeding.
+\bigskip
+
+\noindent
+\textbf{Step 4 – Presentation Generation and Delivery.}  
+The wallet generates the Verifiable Presentation and sends it to the verifier in the authorization response. \\ 
+As in the same-device case, the VP is returned using the \texttt{vp\_token} field.
