@@ -69,3 +69,315 @@ Two research prototypes demonstrate how verifiable credentials can be introduced
 The objective is to authenticate endpoints directly within the protocol using verifiable credentials, avoiding the need to first establish secure channels with traditional certificates and then perform higher-layer SSI authentication.\\ 
 This is especially relevant for IoT systems, where simplifying identity plumbing across layers can significantly reduce complexity.
 
+%% lezione 21/11
+
+\subsection{Post-Quantum Migration: Performance Evaluation and Algorithm Selection}
+
+Quantum adversaries mainly affect SSI through Shor’s algorithm (impacting discrete logarithms and integer factorisation) and Grover’s search. Since SSI relies exclusively on digital signatures (not on key agreement for encryption) the migration concerns:
+\begin{itemize}
+    \item post-quantum key-pair generation for issuers and holders;
+    \item post-quantum signatures on verifiable credentials (VCs) and verifiable presentations (VPs);
+    \item verification of such signatures by verifiers.
+\end{itemize}
+Only these components require PQC replacement, assuming that the surrounding communication channel (e.g., TLS) is already quantum-resistant.
+
+\subsubsection*{Operational Assumptions}
+Two assumptions guide the selection process:
+\begin{enumerate}
+    \item \textbf{Algorithm selection must consider the signature scheme to be used across issuers, holders, and verifiers.}
+    \item \textbf{Verification workloads dominate issuance workloads in web scenarios.}  
+    Holders authenticate frequently, whereas credential issuance occurs far less often.  
+    Therefore, verifier-side performance is the primary optimisation target.
+\end{enumerate}
+
+\subsubsection*{Selection Requirements}
+Given the above assumptions and a chosen NIST PQC security level, four requirements were defined (ordered by priority):
+\begin{enumerate}
+    \item \textbf{Minimal signature verification time}, since the verifier must validate two signatures per authentication (VC and VP).
+    \item \textbf{Minimal signature generation time}, to reduce issuer load and minimise the time holders spend preparing VPs.
+    \item \textbf{Small signature size}, to limit VC/VP document size and transmission overhead.
+    \item \textbf{Small public key size}, beneficial for DID documents or JWK-based identifiers.
+\end{enumerate}
+Key-pair generation time was not prioritised because keys are generated infrequently in SSI ecosystems.
+
+\subsubsection*{Evaluation of PQC Algorithms}
+Using the \texttt{liboqs} library, several signature schemes were benchmarked across the following metrics:
+\begin{itemize}
+    \item NIST security level;
+    \item public key size (JWK-encoded);
+    \item signature size;
+    \item key-pair generation time;
+    \item signature generation time;
+    \item signature verification time.
+\end{itemize}
+
+\noindent
+The comparison included ML-DSA, SLH-DSA (fast and secure variants), and Falcon. Falcon was excluded from the final selection due to incomplete standardisation and susceptibility to timing attacks arising from floating-point operations, despite competitive performance.
+
+\paragraph*{Observed Trends}
+Across security levels, the benchmarks revealed that:
+\begin{itemize}
+    \item public key and signature sizes grow with the security level;
+    \item all PQC schemes require significantly more resources than classical algorithms;
+    \item ML-DSA consistently offers the best balance of verification time, generation time, and signature size among standardised schemes;
+    \item SLH-DSA provides smaller public keys but significantly larger signatures and slower operations;
+    \item Falcon shows excellent performance but is unsuitable for deployment today.
+\end{itemize}
+
+\subsubsection*{Selection of ML-DSA-44}
+Applying the four requirements to empirical results leads to a clear outcome:  
+\textbf{ML-DSA-44 (NIST level 2) is the optimal candidate for SSI migration under the stated assumptions.}
+\medskip
+
+\noindent
+Its verification time, generation time, and signature size outperform other standardised options, particularly in high-frequency verification scenarios.
+\smallskip
+
+\noindent
+The corresponding security equivalences are:
+\begin{itemize}
+    \item \textbf{ML-DSA-44 (level 2)}: comparable to SHA-256 collision resistance;
+    \item \textbf{ML-DSA-65 (level 3)}: comparable to AES-192 key search;
+    \item \textbf{ML-DSA-87 (level 5)}: comparable to AES-256 key search.
+\end{itemize}
+
+\subsubsection*{Crypto-Agility as a Design Principle}
+The migration does not end with embedding ML-DSA into the SSI framework.\\
+To ensure long-term security, the implementation was refactored to support:
+\begin{itemize}
+    \item modular replacement of signature algorithms;
+    \item rapid substitution in case ML-DSA becomes vulnerable;
+    \item integration of future PQC candidates without redesigning the framework.
+\end{itemize}
+
+\noindent
+Crypto agility is therefore not optional but a foundational requirement for PQC adoption in SSI systems.
+
+\subsection{Hybrid Post-Quantum/Traditional Signatures in SSI}
+
+The migration of SSI toward post-quantum security requires not only crypto agility and deployability but also the adoption of hybrid approaches during the transition.\\
+Hybrid schemes combine post-quantum (PQ) and traditional algorithms so that authentication remains secure as long as at least one of the two signature schemes is unbroken. This ensures resilience both against future quantum adversaries and against potential mathematical breakthroughs affecting new PQC primitives.
+
+\subsubsection*{Motivation for Hybridisation}
+Although NIST-standardised PQC signatures have undergone rigorous scrutiny, they are still less mature than classical algorithms.\\
+A hybrid scheme mitigates this uncertainty: even if a PQC algorithm fails before cryptographically relevant quantum computers emerge, the traditional signature continues to provide security guarantees. Conversely, once such quantum computers become available, PQC components will protect against attacks that break classical signatures.
+\medskip
+
+\noindent
+The IETF refers to this class of constructions as \textbf{PQ/T hybrid} schemes.
+
+\subsubsection*{Hybrid Signature Scheme}
+The hybrid signature is defined as the concatenation of a post-quantum signature and a traditional one:
+\[
+    \sigma_h = (\sigma_{pq}, \sigma_t).
+\]
+
+\noindent
+To sign a message \( m \), both algorithms operate on a common modified input:
+\[
+    m' = \text{hash}(m),
+\]
+augmented with the DER-encoded object identifier (OID) to prevent cross-protocol substitution.  
+\medskip
+
+\noindent
+The signing process is:
+\[
+\begin{aligned}
+\sigma_{pq} &\leftarrow \text{Sign}(sk_{pq}, A_{pq}, \text{DER(OID)} \parallel m'), \\
+\sigma_{t} &\leftarrow \text{Sign}(sk_{t}, A_{t}, \text{DER(OID)} \parallel m'),
+\end{aligned}
+\]
+where \(A_{pq}\) and \(A_t\) denote algorithm identifiers.
+
+\noindent
+Verification requires both signatures to be valid:
+\[
+\begin{aligned}
+\text{Verify}(pk_{pq}, \text{DER(OID)} \parallel m', \sigma_{pq}, A_{pq}), \\
+\text{Verify}(pk_{t}, \text{DER(OID)} \parallel m', \sigma_{t}, A_{t}).
+\end{aligned}
+\]
+The hybrid verification succeeds \emph{only if both individual verifications succeed}. An adversary must therefore forge both signatures to impersonate the credential holder.
+
+\subsubsection*{Weak Non-Separability and Stripping Attacks}
+A core property of hybrid schemes is \textbf{non-separability}: a verifier must not accept a hybrid signature if one component is missing or stripped.
+\medskip
+
+\noindent
+Two stripping attack scenarios are possible:
+\begin{itemize}
+    \item A quantum adversary removes the PQ component and forges the classical signature.
+    \item A mathematical break compromises the PQC algorithm, allowing the adversary to remove the classical signature and forge the PQ component.
+\end{itemize}
+
+\noindent
+Since full non-separability is complex to guarantee in practice, the implemented scheme adopts \textbf{weak non-separability}: an adversary may attempt to remove one component, but \emph{the verifier must detect the stripping}. This is sufficient for transitional security and prevents silent degradation to a broken algorithm.
+
+\subsubsection {Hybridisation Artefact in the DID Document}
+To enforce weak non-separability at the protocol level, SSI introduces a \textbf{hybridisation artefact} into the DID Document. This artefact makes explicit the intention of both issuer and holder to use hybrid signatures and ensures that verifiers are aware of the hybrid scheme required for authentication.
+
+\paragraph*{The Composite JWK}
+The artefact is encoded as a \texttt{compositeJwk} object extending the JWK format to include:
+\begin{itemize}
+    \item a post-quantum public key (e.g., ML-DSA-44);
+    \item a traditional public key (e.g., Ed25519);
+    \item an \texttt{algId} describing the exact hybrid combination.
+\end{itemize}
+
+\begin{verbatim}
+"compositeJwk": {
+  "algId": "id-MLDSA44-Ed25519-SHA512",
+  "pqPublicKey": {
+     "kty": "ML-DSA",
+     "alg": "ML-DSA-44",
+     "kid": "...",
+     "pub": "... encoded public key ..."
+  },
+  "traditionalPublicKey": {
+     "kty": "OKP",
+     "alg": "Ed25519",
+     "kid": "...",
+     "x": "... encoded coordinate ..."
+  }
+}
+\end{verbatim}
+
+This structure informs the verifier that:
+\begin{itemize}
+    \item hybrid signatures are mandatory,
+    \item both signatures must be checked,
+    \item stripping either component invalidates the authentication.
+\end{itemize}
+
+\noindent
+When verifiable credentials are later anchored to DLTs or quantum-safe ledgers, this artefact will persist as part of the decentralised identity metadata.
+
+\subsubsection*{Security and Deployment Considerations}
+The hybrid mechanism supports:
+\begin{itemize}
+    \item \textbf{crypto agility}: the system can plug in new PQC or classical algorithms as needed;
+    \item \textbf{deployability}: no change is required to how operators manage existing systems;
+    \item \textbf{transitional robustness}: even if PQC fails early, classical signatures protect authenticity.
+\end{itemize}
+
+\noindent
+Hybridisation therefore provides a practical and secure pathway from classical SSI to a fully post-quantum identity ecosystem.
+
+
+
+
+\subsubsection *{The \texttt{did:compositejwk} Method and CRUD Operations}
+
+\subsubsection*{Composite JWK in the DID Document}
+To support hybrid post-quantum/traditional public keys, the DID Document embeds a
+\texttt{compositeJwk} object. The DID is expressed as:
+\[
+\text{did:compositejwk:}\,\textit{base64url(compositeJwk)}.
+\]
+
+\noindent
+An example structure is:
+\begin{verbatim}
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1.1",
+    "https://w3id.org/security/suites/jws-2020/v1"
+  ],
+  "id": "did:compositejwk:${base64url-value}",
+  "verificationMethod": [{
+     "id": "did:compositejwk:${base64url-value}#0",
+     "type": "CompositeJsonWebKey",
+     "controller": "did:compositejwk:${base64url-value}",
+     "compositeJwk": "${composite-jwk}"
+  }]
+}
+\end{verbatim}
+
+\noindent
+This design embeds the post-quantum/traditional hybrid key pair directly in the DID method, allowing immediate recovery of the hybrid public keys upon resolution.
+
+\subsubsection*{Definition of the \texttt{did:compositejwk} Method}
+The method provides:
+\begin{itemize}
+    \item a DID mechanism for static PQ/T hybrid keys,
+    \item a non-VDR DID method,
+    \item an expansion of the encoded composite JWK into a full DID Document.
+\end{itemize}
+
+\noindent
+Formally:
+\[
+\text{DID} = \text{did:compositejwk:}\,c\text{-value},
+\]
+where the \emph{c-value} is a base64url-encoded \texttt{compositeJwk}.
+
+\subsubsection*{CRUD: Create}
+
+\noindent
+To create a DID using this method:
+\begin{enumerate}
+    \item generate or load a \texttt{compositeJwk},
+    \item serialize it as a UTF-8 string,
+    \item encode the string in base64url,
+    \item prefix it with \texttt{did:compositejwk:}.
+\end{enumerate}
+
+\noindent
+To create the DID Document:
+\begin{itemize}
+    \item inject the base64url value into the DID,
+    \item insert the compositeJwk structure into the verification method.
+\end{itemize}
+
+\subsubsection*{CRUD: Resolve}
+
+Resolving a \texttt{did:compositejwk} consists of:
+\begin{enumerate}
+    \item removing the prefix \texttt{did:compositejwk:},
+    \item decoding the remaining string from base64url,
+    \item parsing the decoded value as UTF-8 JSON,
+    \item validating \texttt{compositeJwk} properties,
+    \item generating the DID Document using the hybrid public key.
+\end{enumerate}
+
+\noindent
+The validation step ensures that both the PQ and traditional public keys conform to the algorithm identifier defined in the composite object.
+
+\subsubsection*{CRUD: Update}
+
+This DID method does not support updates, since the keys are static and directly encoded in the DID itself.
+
+\subsubsection*{CRUD: Deactivate}
+
+This DID method does not support deactivation of the DID Document.
+
+
+\subsubsection*{Performance Impact}
+
+The DID Document size grows with:
+\begin{itemize}
+    \item the size of post-quantum public keys,
+    \item the security level of ML-DSA variants,
+    \item the hybridisation overhead when combining ML-DSA with Ed25519.
+\end{itemize}
+
+\noindent
+Experimental evaluation confirms:
+\begin{itemize}
+    \item DID creation time correlates with key pair generation time,
+    \item JWT(VC) and JWT(VP) sizes follow the size of PQ signatures,
+    \item verification time remains coherent with the timing of the underlying signature algorithms.
+\end{itemize}
+
+\subsubsection*{Selection of Algorithms for PQ/T Hybrid VCs and VPs}
+
+The same principles used for pure post-quantum selection apply to hybrid schemes.\\
+The chosen combinations are:
+\begin{itemize}
+    \item \texttt{id-MLDSA44-Ed25519-SHA512},
+    \item \texttt{id-MLDSA65-Ed25519-SHA512}.
+\end{itemize}
+
+\noindent
+These were selected by applying the prioritised criteria: verification time, signature generation time, signature size, and public key size.
