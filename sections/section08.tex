@@ -153,7 +153,7 @@ To ensure long-term security, the implementation was refactored to support:
 \noindent
 Crypto agility is therefore not optional but a foundational requirement for PQC adoption in SSI systems.
 
-\subsection{Hybrid Post-Quantum/Traditional Signatures in SSI}
+\subsection *{Hybrid Post-Quantum/Traditional Signatures in SSI}
 
 The migration of SSI toward post-quantum security requires not only crypto agility and deployability but also the adoption of hybrid approaches during the transition.\\
 Hybrid schemes combine post-quantum (PQ) and traditional algorithms so that authentication remains secure as long as at least one of the two signature schemes is unbroken. This ensures resilience both against future quantum adversaries and against potential mathematical breakthroughs affecting new PQC primitives.
@@ -381,3 +381,550 @@ The chosen combinations are:
 
 \noindent
 These were selected by applying the prioritised criteria: verification time, signature generation time, signature size, and public key size.
+
+
+\subsection{VC-based TLS handshake for IoT}
+
+Two research works investigate the use of verifiable credentials as alternative certificate types in protocols operating below the application layer of the TCP/IP stack.\\  
+The considered protocols are:
+\begin{itemize}
+    \item TLS,
+    \item IPsec.
+\end{itemize}
+
+\noindent
+Both works assume an \textbf{IoT connected system} as the target scenario.\\ 
+The proposed solutions are specifically designed for IoT environments and are not intended to be applied to general-purpose use cases.
+
+
+\subsubsection*{Research Motivation}
+
+\noindent
+Given the advantages in terms of lifecycle management and operational cost reduction, using SSI, the main research question is:
+
+\begin{quote}
+Can verifiable credentials be used within TLS to eliminate the need for X.509 certificates?
+\end{quote}
+
+\noindent
+The motivation is to avoid reliance on traditional identity technologies at the transport layer.\\  
+In current architectures, even when SSI is used at the application layer, a TLS channel secured with X.509 certificates is still required.\\ 
+The goal is to enable SSI-based authentication directly within TLS.
+
+\subsubsection*{Objectives}
+
+\noindent
+The objectives of the proposed solution are:
+\begin{itemize}
+    \item Extend the TLS~1.3 handshake protocol (RFC~8446) to allow a server, and optionally a client, to authenticate using verifiable credentials.
+    \item Preserve interoperability with X.509 public key certificates by supporting:
+    \begin{itemize}
+        \item hybrid handshakes combining X.509 certificates and VCs,
+        \item fallback to the standard TLS~1.3 handshake when necessary.
+    \end{itemize}
+    \item Preserve all security guarantees provided by the TLS~1.3 handshake, ensuring that confidentiality, integrity, and authentication properties are not weakened.
+\end{itemize}
+
+\newpage
+
+\subsection *{VC-based TLS 1.3 Handshake}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{./images/section_8/comparison_TLS_VCTLS}
+    \caption{Comparison between the standard TLS~1.3 handshake and the VC-based TLS~1.3 handshake, highlighting the DID resolution step.}
+\end{figure}
+
+\noindent
+The TLS~1.3 handshake is extended to support \emph{verifiable credentials (VCs)} as an additional certificate type, while preserving the original protocol structure and security properties.\\ 
+The design goal is to minimise protocol changes and ensure full interoperability with existing TLS deployments.
+
+\subsubsection*{Design Principles}
+
+\noindent
+The extension of TLS~1.3 follows these principles:
+\begin{itemize}
+    \item no new handshake messages are introduced,
+    \item no existing messages are removed or modified,
+    \item only TLS extensions are employed,
+    \item backward compatibility with X.509-based authentication is preserved.
+\end{itemize}
+
+\noindent
+This approach follows the same rationale adopted in RFC~7250, which introduced \emph{raw public keys} as an alternative certificate type to X.509.
+
+\subsubsection {Certificate Type Negotiation}
+
+\noindent
+TLS already supports certificate type negotiation through two extensions defined in RFC~7250:
+\begin{itemize}
+    \item \texttt{client\_certificate\_type},
+    \item \texttt{server\_certificate\_type}.
+\end{itemize}
+
+\noindent
+Originally, these extensions enabled the use of raw public keys in addition to X.509 certificates.\\  
+The same mechanism is reused to add \emph{verifiable credentials} as a new certificate type, without altering the semantics of the protocol.
+
+\paragraph{Client Certificate Type}
+\noindent
+\begin{itemize}
+    \item In the \texttt{ClientHello}, it indicates the certificate types the client is able to provide.
+    \item In the \texttt{ServerHello}, it indicates the certificate type requested by the server from the client.
+\end{itemize}
+
+\paragraph{Server Certificate Type}
+\noindent
+\begin{itemize}
+    \item In the \texttt{ClientHello}, it indicates the certificate types the client is able to process when sent by the server.
+    \item In the \texttt{ServerHello}, it indicates the certificate type selected by the server and carried in the \texttt{Certificate} message.
+\end{itemize}
+
+\noindent
+In all cases, the final decision on the certificate type is taken by the server, as defined by the TLS protocol.
+
+\subsubsection*{DID Method Extension}
+
+\noindent
+In addition to the existing certificate type extensions, a new extension called \texttt{did\_methods} is introduced.
+
+\noindent
+This extension specifies the DID methods supported by a TLS endpoint and therefore:
+\begin{itemize}
+    \item the Verifiable Data Registries (VDRs) it can interact with,
+    \item where the peer’s DID Document can be resolved.
+\end{itemize}
+
+\noindent
+The extension follows the standard TLS extension syntax defined in RFC~8446 and contains an enumerated list of supported DID method identifiers. \\ 
+Not all endpoints are required to support all DID methods.
+\medskip 
+
+\noindent
+This mechanism enables interoperability between endpoints using different VDRs, in compliance with the general SSI model.\\
+For standardisation purposes, DID method identifiers should be maintained by IANA, similarly to other protocol registries.
+
+\subsubsection*{VC-based Mutual Authentication Flow}
+
+\noindent
+The handshake message sequence remains identical to the standard TLS~1.3 handshake.\\ 
+The only difference concerns the authentication material exchanged.
+\medskip
+
+\noindent
+When both client and server support verifiable credentials:
+\begin{itemize}
+    \item the \texttt{ClientHello} includes:
+    \begin{itemize}
+        \item \texttt{client\_certificate\_type = \{VC, X.509\}}
+        \item \texttt{server\_certificate\_type = \{VC, X.509\}}
+        \item \texttt{did\_methods}
+    \end{itemize}
+    \item the server selects VC as the certificate type,
+    \item the \texttt{Certificate} message carries the verifiable credential
+    \item the \texttt{CertificateVerify} message signs all previous handshake messages
+    \item the \texttt{Finished} message completes the handshake
+\end{itemize}
+
+\noindent
+VC verification requires an additional operation compared to X.509:
+\begin{itemize}
+    \item resolution of the DID Document through the selected VDR
+\end{itemize}
+
+\noindent
+This resolution is performed:
+\begin{itemize}
+    \item by the client in server-only authentication,
+    \item by both endpoints in mutual authentication.
+\end{itemize}
+
+\subsubsection*{Why Verifiable Credentials Instead of Verifiable Presentations}
+
+\noindent
+Although the SSI model typically relies on \emph{verifiable presentations (VPs)}, the TLS handshake exchanges only verifiable credentials.
+
+\noindent
+This choice is justified by the presence of the \texttt{CertificateVerify} message:
+\begin{itemize}
+    \item it provides a fresh signature over all previous handshake messages
+    \item it binds the VC to the current TLS session
+    \item freshness is ensured by ephemeral key material in TLS~1.3
+\end{itemize}
+
+\noindent
+As a result, the security properties normally guaranteed by a VP are preserved:
+\begin{itemize}
+    \item proof of possession,
+    \item freshness,
+    \item session binding.
+\end{itemize}
+
+\noindent
+Avoiding VPs reduces the number of cryptographic operations and mitigates the performance overhead introduced by DID resolution.
+
+\subsubsection*{Hybrid Handshake and Fallback Mechanism}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{./images/section_8/hybrid_handshake}
+    \caption{Hybrid TLS~1.3 handshake using X.509 and VC certificate types, and fallback to the standard TLS~1.3 handshake.}
+\end{figure}
+
+\noindent
+Hybrid handshakes are supported, where one endpoint authenticates using X.509 certificates and the other using verifiable credentials\\
+For example:
+\begin{itemize}
+    \item the client authenticates with X.509,
+    \item the server authenticates with a VC.
+\end{itemize}
+
+\noindent
+The VC verification includes DID resolution and revocation status checking, while the X.509 side follows the standard TLS verification process.
+\medskip
+
+\noindent
+If an endpoint does not support or does not accept VC-based authentication:
+\begin{itemize}
+    \item certificate type extensions may be ignored,
+    \item the handshake falls back to standard X.509-based TLS~1.3.
+\end{itemize}
+
+\noindent
+This fallback is automatically enabled by reusing existing TLS extensions and guarantees backward compatibility without introducing additional protocol logic.
+
+\subsubsection{Experimental Evaluation}
+
+\noindent
+The proposed VC-based TLS~1.3 handshake was implemented in OpenSSL and experimentally evaluated on a real testbed.
+
+\subsubsection*{ Setup}
+
+\noindent
+The experimental setup consists of:
+\begin{itemize}
+    \item two Raspberry Pi devices acting as TLS client and server,
+    \item a patched OpenSSL implementation supporting VC-based authentication,
+    \item a DLT node used as Verifiable Data Registry (VDR).
+\end{itemize}
+
+\noindent
+Both Raspberry Pi devices interact with the same DLT node.  
+Experiments were conducted considering:
+\begin{itemize}
+    \item unilateral authentication (server-only),
+    \item mutual authentication (client and server).
+\end{itemize}
+
+\subsubsection*{Handshake Latency and DID Resolution}
+
+\noindent
+Table~\ref{tab:tls_latency} reports the average latency of the overall TLS handshake and the DID resolution phase under different configurations.
+
+\begin{table}[h]
+\centering
+\caption{Average latency of TLS handshakes and DID resolution in unilateral (UNI) and mutual (MUT) authentication scenarios [ms].}
+\label{tab:tls_latency}
+\begin{tabular}{l|l|c|c|c}
+\hline
+ &  & X.509 & HTTP over TCP & HTTP over TCP with IPsec \\ \hline
+\multirow{2}{*}{UNI} 
+& Handshake & 13.9 & 25.5 & 26.4 \\
+& DID resolution & -- & 8.2 & 9.2 \\ \hline
+\multirow{2}{*}{MUT} 
+& Handshake & 21.0 & 46.4 & 50.0 \\
+& DID resolution & -- & 17.8 & 21.4 \\ \hline
+\end{tabular}
+\end{table}
+
+\noindent
+When using verifiable credentials, the additional latency is mainly due to the DID resolution process.\\  
+Compared to X.509-based authentication, VC-based handshakes require online interaction with the VDR, whereas certificate chain validation in PKI can be performed offline.
+\medskip
+
+\noindent
+Securing the communication with the DLT node using IPsec introduces a negligible overhead (approximately 1~ms) compared to unsecured HTTP, while providing strong protection against active attacks.
+
+\subsubsection*{Hybrid Handshake Performance}
+
+\noindent
+Table~\ref{tab:hybrid_latency} reports the average latency for hybrid handshakes, where one endpoint uses X.509 and the other uses verifiable credentials.
+
+\begin{table}[h]
+\centering
+\caption{Average latency of hybrid TLS~1.3 handshakes with IPsec-secured DLT communication [ms].}
+\label{tab:hybrid_latency}
+\begin{tabular}{c|c|c}
+\hline
+Server & Client & Handshake latency \\ \hline
+X.509 & VC & 41.6 \\
+VC & X.509 & 40.7 \\ \hline
+\end{tabular}
+\end{table}
+
+\noindent
+The results show that hybrid handshakes introduce a moderate overhead compared to pure X.509 authentication, while remaining compatible with existing TLS deployments.
+
+\subsubsection*{Security Considerations}
+
+\noindent
+A critical security aspect concerns the communication between TLS endpoints and the VDR during DID resolution.
+\medskip
+
+\noindent
+If the DID resolution process is not protected, an attacker could perform a man-in-the-middle attack by providing a forged DID Document containing a malicious public key.\\  
+Since the attacker would control the corresponding private key, the security of the TLS handshake would be compromised.
+\medskip
+
+\noindent
+To mitigate this risk, three approaches were evaluated:
+\begin{itemize}
+    \item unsecured HTTP communication with the DLT node
+    \item HTTPS communication secured with TLS
+    \item IPsec tunnels between TLS endpoints and the DLT node
+\end{itemize}
+
+\noindent
+Among these options, IPsec provides the best trade-off between security and performance.
+\medskip
+
+\noindent
+IPsec tunnels can be established once (using IKE) and reused for subsequent DID resolutions, avoiding the overhead of repeatedly establishing TLS connections.\\ 
+Key rotation and rekeying are handled automatically by the protocol.
+\medskip
+
+\noindent
+To avoid reintroducing certificate management overhead, IPsec authentication is performed using \emph{raw public keys} instead of X.509 certificates.
+\medskip
+
+\noindent
+In a realistic IoT deployment:
+\begin{itemize}
+    \item many IoT nodes interact with a small number of DLT nodes
+    \item each IoT node stores only the public keys of the DLT nodes
+    \item DLT nodes maintain a list of trusted IoT public keys
+\end{itemize}
+
+\noindent
+This model significantly reduces identity management complexity and storage requirements.
+
+\subsubsection*{Privacy Considerations}
+
+\noindent
+Two main privacy aspects are considered.
+
+\paragraph{DID Method Disclosure}
+\noindent
+The \texttt{did\_methods} extension is sent in cleartext within the \texttt{ClientHello}.\\  
+This reveals which DID methods are supported by the client.
+\smallskip
+
+\noindent
+This information is not considered sensitive and does not introduceise significant privacy risks.
+
+\paragraph{DID Resolution Observability}
+\noindent
+Resolving a server DID on a public DLT allows the DLT node to observe which services a client accesses, similarly to DNS resolution.
+
+\noindent
+In IoT scenarios, this is generally not a concern because:
+\begin{itemize}
+    \item deployments typically operate in a closed and managed environment,
+    \item administrators can deploy and control their own DLT entry nodes,
+    \item privacy risks are therefore limited to the system owner.
+\end{itemize}
+
+\vspace{1.5 cm}
+
+\subsubsection*{Fallback Validation}
+
+\noindent
+Fallback to the standard TLS~1.3 handshake was experimentally validated using:
+\begin{itemize}
+    \item a patched OpenSSL implementation
+    \item a vanilla OpenSSL implementation
+\end{itemize}
+
+\noindent
+When certificate type extensions are not recognised, the handshake successfully falls back to X.509-based authentication, confirming backward compatibility.
+
+\subsubsection*{Discussion and Conclusion}
+
+\noindent
+The experimental results show that VC-based TLS authentication introduces a moderate performance overhead due to online DID resolution.
+
+\noindent
+However, this overhead does not change the order of magnitude of handshake latency and is largely offset by:
+\begin{itemize}
+    \item reduced identity lifecycle management costs
+    \item simplified key rotation
+    \item integrated revocation checking
+    \item improved automation in large-scale IoT deployments
+\end{itemize}
+
+\noindent
+For IoT scenarios where identity management cost is a dominant concern, the use of verifiable credentials in TLS represents a viable and effective alternative to traditional X.509-based PKI.
+
+
+
+\subsection{IPsec with Verifiable Credential Certificate Type}
+
+\noindent
+Another research work investigates the use of verifiable credentials within IPsec, focusing in particular on the \emph{Internet Key Exchange version~2 (IKEv2)} protocol.
+\medskip
+
+\noindent
+The motivation is aligned with real-world telco deployments, where IPsec is widely used to establish secure tunnels between network functions (e.g., Kubernetes endpoints) in Software-Defined Networking (SDN) environments.\\  
+In such scenarios, identity management based on X.509 certificates introduces significant operational costs.
+
+\subsubsection*{Motivation}
+
+\noindent
+Current IPsec deployments rely on centralized PKI and X.509 certificates for endpoint authentication.\\
+This results in:
+\begin{itemize}
+    \item high certificate lifecycle management costs,
+    \item significant human intervention,
+    \item scalability limitations.
+\end{itemize}
+
+\noindent
+In practice, some telco operators avoid IKEv2 entirely by adopting centrally controlled IPsec solutions (CCIPS), where keys or key references are distributed directly to endpoints.
+\medskip
+
+\noindent
+This observation motivates the research question:
+
+\begin{quote}
+Can verifiable credentials be used as an alternative certificate type in IKEv2 to reduce identity management costs while preserving IPsec security guarantees?
+\end{quote}
+
+\subsubsection {IKEv2 Architecture Overview}
+
+\noindent
+IKEv2 operates between two endpoints, each comprising:
+\begin{itemize}
+    \item an \emph{IKEv2 engine}, responsible for negotiating Security Associations (SAs),
+    \item an \emph{IPsec engine}, which uses the negotiated SAs to establish encrypted tunnels.
+\end{itemize}
+
+\noindent
+IKEv2 exchanges consist mainly of two phases:
+\begin{itemize}
+    \item \texttt{IKE\_SA\_INIT}, used to negotiate cryptographic parameters, keys, and nonces,
+    \item \texttt{IKE\_AUTH}, used for mutual authentication and SA establishment.
+\end{itemize}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{./images/section_8/ikev2.png}
+    \caption{IKEv2 message exchange for mutual authentication (slide 7).}
+\end{figure}
+
+\newpage 
+\subsubsection {VC-based IKEv2 Handshake}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{./images/section_8/ikev2_vc_handshake.png}
+    \caption{IKEv2 message exchange extended with Verifiable Credentials and DID resolution (slide 8).}
+\end{figure}
+
+\noindent
+The proposed solution introduces verifiable credentials as a new \emph{certificate encoding} for IKEv2, without altering the core protocol logic.
+\medskip
+
+\noindent
+A new certificate encoding value \texttt{VC} is added. \\
+When \texttt{VC} is selected:
+\begin{itemize}
+    \item the \texttt{CERT} payload carries the verifiable credential,
+    \item the \texttt{CERTREQ} payload is used to negotiate supported DID methods.
+\end{itemize}
+
+\noindent
+Specifically, the \emph{Certification Authority} field of \texttt{CERTREQ} contains the list of DID methods supported by the sender, indicating which Verifiable Data Registries (VDRs) can be used to resolve the peer’s DID.
+
+\noindent
+As in the TLS-based solution, VC verification requires resolving the DID Document from the VDR.  
+Since IKEv2 typically enforces mutual authentication, two DID resolutions are required.
+
+\subsubsection*{Security Considerations}
+
+\noindent
+The design does not modify any pre-existing operating principle of the IKEv2 protocol.
+\medskip
+
+\noindent
+However, if DID resolution is performed over an unsecured channel, a man-in-the-middle attacker could:
+\begin{itemize}
+    \item impersonate the VDR node,
+    \item forge a DID Document binding the peer’s DID to an attacker-controlled key pair,
+    \item compute a valid signature in the \texttt{AUTH} payload.
+\end{itemize}
+
+\noindent
+This would allow the attacker to authenticate successfully using a reused VC.
+\medskip
+
+\noindent
+To mitigate this threat, the recommended solution is to establish a pre-existing IPsec tunnel with the VDR node hosted and operated by the telco operator.
+\medskip
+
+\noindent
+Authentication of this tunnel is performed using \emph{raw public keys}, avoiding the reintroduction of X.509 certificate management overhead.
+
+\subsubsection*{Experimental Validation}
+
+\noindent
+The solution was experimentally validated on a real testbed.  
+Table~\ref{tab:ikev2_latency} reports the average latency of IKEv2 exchanges.
+
+\begin{table}[h]
+\centering
+\caption{Average latency of IKEv2 exchanges [ms].}
+\label{tab:ikev2_latency}
+\begin{tabular}{l|c|c}
+\hline
+ & X.509 & VC \\ \hline
+Total latency & 36.7 & 72.6 \\ \hline
+Initiator construct CERT & 0.33 & 0.22 \\
+Responder construct CERT & 0.29 & 0.14 \\
+Initiator construct AUTH & 4.08 & 3.78 \\
+Responder construct AUTH & 1.70 & 3.51 \\
+Process peer CERT (Initiator) & 0.49 & 18.91 \\
+Process peer CERT (Responder) & 0.54 & 21.09 \\
+Process peer AUTH (Initiator) & 4.86 & 2.32 \\
+Process peer AUTH (Responder) & 3.06 & 3.49 \\ \hline
+\end{tabular}
+\end{table}
+
+\noindent
+The increased latency when using verifiable credentials is almost entirely due to DID resolution.  
+Signature generation and verification costs remain comparable, as the same cryptographic algorithms are used.
+
+\subsubsection*{Discussion}
+
+\noindent
+While VC-based authentication roughly doubles the IKEv2 setup time, this overhead is negligible in typical IPsec deployments.
+\medskip
+
+\noindent
+Unlike TLS, where connections are short-lived and handshake latency is critical, IPsec tunnels are usually established once and maintained for long periods (hours or days).
+\medskip
+
+\noindent
+In this context, an additional delay of a few tens of milliseconds is insignificant, while the reduction in identity management cost is substantial.
+
+\subsubsection*{Conclusion}
+
+\noindent
+The use of verifiable credentials in IKEv2:
+\begin{itemize}
+    \item significantly reduces the cost of identity management for IPsec endpoints,
+    \item preserves all security properties of the IKEv2 protocol,
+    \item represents a viable solution for real-world telco deployments.
+\end{itemize}
+
+\noindent
+The same performance trade-offs observed in the TLS-based solution apply here, but their impact is strongly dependent on the operational context, making VC-based IPsec particularly attractive for long-lived secure tunnels.
